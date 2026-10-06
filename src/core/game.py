@@ -1,4 +1,4 @@
-"""The Game object: owns the window, clock and main loop."""
+"""The Game object: owns the window, clock, event bus and main loop."""
 from __future__ import annotations
 
 import logging
@@ -6,6 +6,7 @@ import logging
 import pygame
 
 from src.core import settings
+from src.core.event_bus import EventBus
 from src.core.state_manager import StateManager
 
 log = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ class Game:
         )
         self.clock = pygame.time.Clock()
         self.running = False
+        self.event_bus = EventBus()
         self.state_manager = StateManager()
 
     def run(self) -> None:

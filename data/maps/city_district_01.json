@@ -1,0 +1,74 @@
+{
+  "id": "city_district_01",
+  "name": "Abandoned City District",
+  "width": 3200,
+  "height": 2400,
+  "player_spawn": [1600, 1100],
+
+  "buildings": [
+    {"id": "office_01",     "type": "office",     "name": "Meridian Offices",    "rect": [200, 200, 600, 400]},
+    {"id": "store_01",      "type": "store",      "name": "Corner Store",        "rect": [1000, 200, 500, 400]},
+    {"id": "hospital_01",   "type": "hospital",   "name": "St. Mary's Hospital", "rect": [1800, 200, 700, 400]},
+    {"id": "house_01",      "type": "house",      "name": "House",               "rect": [2700, 200, 300, 400]},
+    {"id": "apartments_01", "type": "apartments", "name": "Apartments",          "rect": [200, 900, 600, 400]},
+    {"id": "house_02",      "type": "house",      "name": "House",               "rect": [1000, 900, 400, 400]},
+    {"id": "safehouse_01",  "type": "safehouse",  "name": "Safehouse",           "rect": [1800, 900, 500, 400]},
+    {"id": "house_03",      "type": "house",      "name": "House",               "rect": [2600, 900, 400, 400]},
+    {"id": "warehouse_01",  "type": "warehouse",  "name": "Warehouse",           "rect": [200, 1700, 700, 500]},
+    {"id": "apartments_02", "type": "apartments", "name": "Apartments",          "rect": [1100, 1700, 500, 500]},
+    {"id": "garage_01",     "type": "garage",     "name": "Garage",              "rect": [1900, 1700, 600, 500]},
+    {"id": "house_04",      "type": "house",      "name": "House",               "rect": [2700, 1700, 300, 500]}
+  ],
+
+  "obstacles": [
+    {"type": "vehicle",  "rect": [1500, 650, 120, 60]},
+    {"type": "vehicle",  "rect": [1200, 700, 120, 60]},
+    {"type": "vehicle",  "rect": [2400, 750, 60, 120]},
+    {"type": "vehicle",  "rect": [900, 1450, 120, 60]},
+    {"type": "vehicle",  "rect": [600, 1550, 120, 60]},
+    {"type": "vehicle",  "rect": [1650, 1500, 120, 60]},
+    {"type": "vehicle",  "rect": [2550, 1450, 60, 120]},
+    {"type": "dumpster", "rect": [900, 620, 50, 40]},
+    {"type": "dumpster", "rect": [2520, 620, 50, 40]},
+    {"type": "dumpster", "rect": [1410, 950, 50, 40]},
+    {"type": "dumpster", "rect": [1740, 1000, 50, 40]}
+  ],
+
+  "street_lights": [
+    [400, 750], [900, 750], [1250, 800], [1650, 760], [2100, 750], [2600, 750], [2850, 750],
+    [400, 1500], [950, 1620], [1650, 1400], [2200, 1600], [2650, 1620], [3050, 1500],
+    [900, 300], [1650, 300], [2600, 300],
+    [900, 1100], [2450, 1100],
+    [1000, 1950], [1750, 1950], [2600, 1950]
+  ],
+
+  "safehouse": {
+    "building_id": "safehouse_01",
+    "door_zone": [1950, 1300, 200, 70],
+    "safe_margin": 100
+  },
+
+  "loot_points": [
+    {"id": "loot_01", "pos": [2100, 650],  "category": "medical"},
+    {"id": "loot_02", "pos": [1250, 650],  "category": "general"},
+    {"id": "loot_03", "pos": [500, 650],   "category": "tech"},
+    {"id": "loot_04", "pos": [2850, 650],  "category": "residential"},
+    {"id": "loot_05", "pos": [600, 1350],  "category": "residential"},
+    {"id": "loot_06", "pos": [1200, 1350], "category": "residential"},
+    {"id": "loot_07", "pos": [2450, 1100], "category": "scrap"},
+    {"id": "loot_08", "pos": [550, 1650],  "category": "scrap"},
+    {"id": "loot_09", "pos": [1350, 1650], "category": "residential"},
+    {"id": "loot_10", "pos": [2200, 1650], "category": "scrap"},
+    {"id": "loot_11", "pos": [2850, 1650], "category": "residential"},
+    {"id": "loot_12", "pos": [1560, 730],  "category": "vehicle"}
+  ],
+
+  "spawn_zones": [
+    {"id": "north_gate", "rect": [1550, 40, 200, 80]},
+    {"id": "south_gate", "rect": [1500, 2260, 200, 80]},
+    {"id": "west_gate",  "rect": [40, 720, 80, 160]},
+    {"id": "east_gate",  "rect": [3080, 1400, 80, 200]},
+    {"id": "northeast",  "rect": [3080, 720, 80, 160]},
+    {"id": "southwest",  "rect": [40, 1450, 80, 200]}
+  ]
+}
