@@ -18,7 +18,7 @@ class BootState(GameState):
         if event.key == pygame.K_ESCAPE:
             self.game.quit()
         elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-            from src.states.playing_state import PlayingState
+            from src.states.playing_state import PlayingState  # avoid circular import
             self.game.state_manager.change_state(PlayingState(self.game))
 
     def update(self, dt: float) -> None:

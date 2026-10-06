@@ -1,4 +1,4 @@
-"""Central configuration constants."""
+"""Central configuration constants. Change values here, not in the logic."""
 
 TITLE = "Nightfall Survival: Last Stand"
 SCREEN_WIDTH = 1280
@@ -6,7 +6,7 @@ SCREEN_HEIGHT = 720
 FPS = 60
 MAX_DT = 0.1  # clamp huge frame times so physics never explodes
 
-# --- Colours ---
+# --- Colours (from the main menu design) ---
 COLOR_BACKGROUND = (10, 12, 20)
 COLOR_TEXT = (232, 238, 247)
 COLOR_ACCENT = (224, 34, 27)
