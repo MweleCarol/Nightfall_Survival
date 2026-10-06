@@ -1,4 +1,4 @@
-"""The player: position, movement, collision, aim."""
+"""The player: position, movement, collision, aim, weapon."""
 from __future__ import annotations
 
 from typing import Sequence
@@ -6,6 +6,7 @@ from typing import Sequence
 import pygame
 from pygame import Vector2
 
+from src.combat.weapon import Weapon
 from src.core import settings
 from src.player.stats import Stats
 from src.world.camera import Camera
@@ -13,13 +14,15 @@ from src.world.collision import collide_axis
 
 
 class Player:
-    def __init__(self, position: tuple[float, float]) -> None:
+    def __init__(self, position: tuple[float, float], weapon: Weapon | None = None) -> None:
         self.position = Vector2(position)
         self.velocity = Vector2(0, 0)
         self.stats = Stats()
+        self.weapon = weapon
         self.rect = pygame.Rect(0, 0, settings.PLAYER_SIZE, settings.PLAYER_SIZE)
         self.aim_direction = Vector2(1, 0)
         self.is_sprinting = False
+        self.hurt_timer = 0.0
         self._sync_rect()
 
     # ---- input-facing API ----
@@ -28,12 +31,23 @@ class Player:
         if offset.length_squared() > 0:
             self.aim_direction = offset.normalize()
 
+    def take_damage(self, amount: int) -> int:
+        """Apply damage and trigger the hurt flash. Returns damage actually dealt."""
+        dealt = self.stats.take_damage(amount)
+        if dealt:
+            self.hurt_timer = settings.PLAYER_HURT_FLASH
+        return dealt
+
     def update(self, dt: float, direction: Vector2, sprint_held: bool,
                walls: Sequence[pygame.Rect]) -> None:
+        self.hurt_timer = max(0.0, self.hurt_timer - dt)
         if self.stats.is_dead:
             self.velocity = Vector2(0, 0)
             self.is_sprinting = False
             return
+
+        if self.weapon is not None:
+            self.weapon.update(dt)
 
         moving = direction.length_squared() > 0
         if moving:
@@ -53,7 +67,12 @@ class Player:
     def draw(self, surface: pygame.Surface, camera: Camera) -> None:
         center = camera.world_to_screen(self.position)
         radius = settings.PLAYER_SIZE // 2
-        color = settings.COLOR_AMBER if self.is_sprinting else settings.COLOR_TEXT
+        if self.hurt_timer > 0:
+            color = settings.COLOR_ACCENT
+        elif self.is_sprinting:
+            color = settings.COLOR_AMBER
+        else:
+            color = settings.COLOR_TEXT
         pygame.draw.circle(surface, color, center, radius)
         tip = center + self.aim_direction * (radius + 12)
         pygame.draw.line(surface, settings.COLOR_ACCENT, center, tip, 4)

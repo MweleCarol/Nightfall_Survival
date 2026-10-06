@@ -1,0 +1,20 @@
+{
+  "enemies": [
+    {
+      "id": "walker",
+      "name": "Walker",
+      "type": "walker",
+      "max_health": 60,
+      "speed": 85,
+      "detection_range": 350,
+      "attack_range": 44,
+      "attack_damage": 10,
+      "attack_cooldown": 1.2,
+      "attack_windup": 0.4,
+      "search_time": 4.0,
+      "xp_reward": 10,
+      "radius": 16,
+      "color": [96, 140, 86]
+    }
+  ]
+}

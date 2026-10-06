@@ -49,3 +49,20 @@ NIGHT_MAX_DARKNESS = 215        # 0-255 overlay opacity at full night
 NIGHT_TINT = (6, 9, 22)
 PLAYER_LIGHT_RADIUS = 280
 STREET_LIGHT_RADIUS = 240
+
+
+# --- Combat ---
+WEAPONS_FILE = "data/weapons.json"
+ENEMIES_FILE = "data/enemies.json"
+PLAYER_START_WEAPON = "pistol_01"
+PLAYER_START_RESERVE_AMMO = 48
+PLAYER_HURT_FLASH = 0.2         # seconds the player flashes red when hit
+TRACER_LIFETIME = 0.08          # seconds a bullet trail stays visible
+MUZZLE_OFFSET = 22              # pixels from player centre to the gun tip
+GAME_OVER_DELAY = 1.5           # seconds between death and the game-over screen
+
+# --- Enemy AI ---
+ENEMY_LOSE_INTEREST_FACTOR = 1.5   # chase until the player is this x detection range away
+ENEMY_ATTACK_HYSTERESIS = 1.2      # stop attacking only when this x attack range away
+ENEMY_CORPSE_TIME = 0.8            # seconds before a dead enemy disappears
+ENEMY_ARRIVE_DISTANCE = 8.0        # "reached the spot" distance for SEARCH

@@ -1,0 +1,17 @@
+{
+  "weapons": [
+    {
+      "id": "pistol_01",
+      "name": "M9",
+      "damage": 25,
+      "fire_rate": 4,
+      "magazine_size": 12,
+      "ammo_type": "9mm",
+      "reload_time": 1.5,
+      "range": 500,
+      "spread": 2.0,
+      "rarity": "common",
+      "automatic": false
+    }
+  ]
+}
