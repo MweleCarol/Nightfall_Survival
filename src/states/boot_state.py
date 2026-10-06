@@ -1,4 +1,4 @@
-"""Temporary title screen used to verify the foundation works."""
+"""Temporary title screen until the real main menu is built (Milestone 9)."""
 from __future__ import annotations
 
 import pygame
@@ -13,24 +13,21 @@ class BootState(GameState):
         self.small_font = pygame.font.SysFont("arial", 24)
 
     def handle_event(self, event: pygame.event.Event) -> None:
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+        if event.type != pygame.KEYDOWN:
+            return
+        if event.key == pygame.K_ESCAPE:
             self.game.quit()
+        elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+            from src.states.playing_state import PlayingState
+            self.game.state_manager.change_state(PlayingState(self.game))
 
     def update(self, dt: float) -> None:
         pass
 
     def render(self, surface: pygame.Surface) -> None:
-        cx = settings.SCREEN_WIDTH // 2
-        cy = settings.SCREEN_HEIGHT // 2
-
+        cx, cy = settings.SCREEN_WIDTH // 2, settings.SCREEN_HEIGHT // 2
         title = self.title_font.render("NIGHTFALL SURVIVAL", True, settings.COLOR_TEXT)
         surface.blit(title, title.get_rect(center=(cx, cy - 40)))
-
-        sub = self.small_font.render("Milestone 1: Foundation", True, settings.COLOR_ACCENT)
+        sub = self.small_font.render("Press ENTER to start  |  ESC to quit",
+                                     True, settings.COLOR_ACCENT)
         surface.blit(sub, sub.get_rect(center=(cx, cy + 30)))
-
-        fps = self.small_font.render(
-            f"FPS: {self.game.clock.get_fps():.0f}   |   ESC to quit",
-            True, settings.COLOR_MUTED,
-        )
-        surface.blit(fps, (16, 16))
