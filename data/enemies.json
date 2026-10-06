@@ -1,20 +1,22 @@
 {
   "enemies": [
     {
-      "id": "walker",
-      "name": "Walker",
-      "type": "walker",
-      "max_health": 60,
-      "speed": 85,
-      "detection_range": 350,
-      "attack_range": 44,
-      "attack_damage": 10,
-      "attack_cooldown": 1.2,
-      "attack_windup": 0.4,
-      "search_time": 4.0,
-      "xp_reward": 10,
-      "radius": 16,
-      "color": [96, 140, 86]
+      "id": "walker", "name": "Walker", "type": "walker",
+      "max_health": 60, "speed": 85, "detection_range": 350, "attack_range": 44,
+      "attack_damage": 10, "attack_cooldown": 1.2, "attack_windup": 0.4,
+      "search_time": 4.0, "xp_reward": 10, "radius": 16, "color": [96, 140, 86]
+    },
+    {
+      "id": "stalker", "name": "Stalker", "type": "stalker",
+      "max_health": 35, "speed": 175, "detection_range": 450, "attack_range": 40,
+      "attack_damage": 8, "attack_cooldown": 0.9, "attack_windup": 0.25,
+      "search_time": 5.0, "xp_reward": 15, "radius": 14, "color": [150, 90, 160]
+    },
+    {
+      "id": "brute", "name": "Brute", "type": "brute",
+      "max_health": 220, "speed": 60, "detection_range": 320, "attack_range": 56,
+      "attack_damage": 25, "attack_cooldown": 1.8, "attack_windup": 0.7,
+      "search_time": 3.0, "xp_reward": 40, "radius": 22, "color": [150, 70, 60]
     }
   ]
 }

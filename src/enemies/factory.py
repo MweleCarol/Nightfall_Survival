@@ -1,12 +1,18 @@
 """Creates enemies from their data definitions."""
 from __future__ import annotations
 
+from src.enemies.brute import Brute
 from src.enemies.enemy import Enemy, EnemyDef, load_enemy_defs
+from src.enemies.stalker import Stalker
 from src.enemies.walker import Walker
 from src.services.data_loader import DataLoadError
 
 # Maps the "type" field in enemies.json to a Python class. New enemies register here.
-ENEMY_CLASSES: dict[str, type[Enemy]] = {"walker": Walker}
+ENEMY_CLASSES: dict[str, type[Enemy]] = {
+    "walker": Walker,
+    "stalker": Stalker,
+    "brute": Brute,
+}
 
 
 class EnemyFactory:

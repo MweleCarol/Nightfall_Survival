@@ -108,6 +108,7 @@ class Enemy:
         self.state = AIState.IDLE
         self.last_known = Vector2(position)   # where the player was last seen
         self.alerted = False                  # set when shot while IDLE
+        self.relentless = False               # NEW (M5): wave enemies always know where the player is
         self.attack_timer = 0.0
         self.search_timer = 0.0
         self.hit_flash = 0.0
@@ -185,7 +186,8 @@ class Enemy:
         distance = self.position.distance_to(target)
 
         if self.state is AIState.IDLE:
-            if distance <= d.detection_range or self.alerted:
+            # NEW (M5): "or self.relentless" at the end of this line
+            if distance <= d.detection_range or self.alerted or self.relentless:
                 self.last_known = Vector2(target)
                 self._set_state(AIState.CHASE)
 
@@ -193,7 +195,9 @@ class Enemy:
             if distance <= d.attack_range:
                 self.last_known = Vector2(target)
                 self._set_state(AIState.ATTACK)
-            elif distance > d.detection_range * settings.ENEMY_LOSE_INTEREST_FACTOR:
+            # NEW (M5): relentless enemies never lose interest
+            elif (not self.relentless
+                  and distance > d.detection_range * settings.ENEMY_LOSE_INTEREST_FACTOR):
                 self._set_state(AIState.SEARCH)      # keeps the old last_known
             else:
                 self.last_known = Vector2(target)

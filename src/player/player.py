@@ -11,14 +11,17 @@ from src.core import settings
 from src.player.stats import Stats
 from src.world.camera import Camera
 from src.world.collision import collide_axis
+from src.player.inventory import Inventory
 
 
 class Player:
-    def __init__(self, position: tuple[float, float], weapon: Weapon | None = None) -> None:
+    def __init__(self, position: tuple[float, float],weapon: Weapon | None = None,
+                 inventory: Inventory | None = None) -> None:
         self.position = Vector2(position)
         self.velocity = Vector2(0, 0)
         self.stats = Stats()
         self.weapon = weapon
+        self.inventory = inventory
         self.rect = pygame.Rect(0, 0, settings.PLAYER_SIZE, settings.PLAYER_SIZE)
         self.aim_direction = Vector2(1, 0)
         self.is_sprinting = False
@@ -37,6 +40,38 @@ class Player:
         if dealt:
             self.hurt_timer = settings.PLAYER_HURT_FLASH
         return dealt
+
+    def use_item(self, item_id: str) -> bool:
+        """Use a consumable from the inventory. Returns True if it was used."""
+        if self.inventory is None or self.stats.is_dead:
+            return False
+        definition = self.inventory.definitions.get(item_id)
+        if definition is None or definition.type != "consumable":
+            return False
+        if not self.inventory.has(item_id):
+            return False
+        if definition.heal > 0:
+            if self.stats.health >= self.stats.max_health:
+                return False                      # don't waste it at full health
+            self.stats.heal(definition.heal)
+        self.inventory.remove(item_id, 1)
+        return True
+
+    def quick_heal(self) -> str | None:
+        """Use the smallest healing item that covers the missing health (else the biggest)."""
+        if self.inventory is None or self.stats.is_dead:
+            return None
+        missing = self.stats.max_health - self.stats.health
+        if missing <= 0:
+            return None
+        options = sorted(
+            (d for d in self.inventory.definitions.values()
+             if d.type == "consumable" and d.heal > 0 and self.inventory.has(d.id)),
+            key=lambda d: d.heal)
+        if not options:
+            return None
+        chosen = next((d for d in options if d.heal >= missing), options[-1])
+        return chosen.name if self.use_item(chosen.id) else None
 
     def update(self, dt: float, direction: Vector2, sprint_held: bool,
                walls: Sequence[pygame.Rect]) -> None:

@@ -38,7 +38,7 @@ CAMERA_SMOOTHING = 8.0          # higher = snappier
 
 # --- Day / night (real seconds per phase; short for testing) ---
 DAY_DURATION = 120.0
-NIGHT_DURATION = 90.0
+NIGHT_DURATION = 150.0
 DAY_START_HOUR = 8              # in-game clock: day runs 08:00 -> 20:00
 NIGHT_START_HOUR = 20
 DUSK_START = 0.75               # fraction of the day when it starts getting dark
@@ -66,3 +66,24 @@ ENEMY_LOSE_INTEREST_FACTOR = 1.5   # chase until the player is this x detection 
 ENEMY_ATTACK_HYSTERESIS = 1.2      # stop attacking only when this x attack range away
 ENEMY_CORPSE_TIME = 0.8            # seconds before a dead enemy disappears
 ENEMY_ARRIVE_DISTANCE = 8.0        # "reached the spot" distance for SEARCH
+
+
+# --- Items, loot, inventory ---
+ITEMS_FILE = "data/items.json"
+LOOT_TABLES_FILE = "data/loot_tables.json"
+WAVES_FILE = "data/waves.json"
+INVENTORY_CAPACITY = 20                 # slots; one slot holds up to the item's max_stack
+PLAYER_START_ITEMS = {"ammo_9mm": 48, "medkit": 1}
+CONTAINER_INTERACT_RANGE = 60           # pixels
+PICKUP_RADIUS = 34
+PICKUP_LIFETIME = 90.0                  # seconds before a dropped item disappears
+DROP_SCATTER = 24                       # random offset when items drop
+FULL_NOTICE_COOLDOWN = 3.0
+
+RARITY_COLORS = {
+    "common": (200, 205, 215),
+    "uncommon": (110, 200, 120),
+    "rare": (90, 150, 235),
+    "epic": (180, 100, 230),
+    "legendary": (245, 165, 36),
+}

@@ -1,0 +1,17 @@
+{
+  "waves_per_night": 3,
+  "base_count": 4,
+  "count_growth": 2,
+  "wave_growth": 2,
+  "health_growth": 0.15,
+  "damage_growth": 0.1,
+  "first_wave_delay": 8,
+  "wave_delay": 12,
+  "spawn_delay": 1.2,
+  "max_alive": 20,
+  "enemies": [
+    {"id": "walker",  "weight": 100, "min_night": 1},
+    {"id": "stalker", "weight": 35,  "min_night": 2},
+    {"id": "brute",   "weight": 12,  "min_night": 3}
+  ]
+}

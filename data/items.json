@@ -1,0 +1,20 @@
+{
+  "items": [
+    {"id": "ammo_9mm", "name": "9mm Ammo", "type": "ammo", "max_stack": 60, "rarity": "common",
+     "description": "Standard pistol rounds."},
+    {"id": "scrap", "name": "Scrap", "type": "resource", "max_stack": 99, "rarity": "common",
+     "description": "Salvaged metal. Used for crafting and upgrades."},
+    {"id": "chemicals", "name": "Chemicals", "type": "resource", "max_stack": 50, "rarity": "common",
+     "description": "Unstable compounds from labs and garages."},
+    {"id": "batteries", "name": "Batteries", "type": "resource", "max_stack": 20, "rarity": "uncommon",
+     "description": "Still holding a charge. Useful for electronics."},
+    {"id": "medical_supplies", "name": "Medical Supplies", "type": "resource", "max_stack": 30, "rarity": "uncommon",
+     "description": "Gauze, antiseptic and syringes."},
+    {"id": "weapon_parts", "name": "Weapon Parts", "type": "resource", "max_stack": 20, "rarity": "rare",
+     "description": "Springs, barrels and triggers for weapon upgrades."},
+    {"id": "bandage", "name": "Bandage", "type": "consumable", "max_stack": 10, "rarity": "common",
+     "heal": 15, "description": "Quick field dressing."},
+    {"id": "medkit", "name": "Medkit", "type": "consumable", "max_stack": 5, "rarity": "uncommon",
+     "heal": 35, "description": "A proper first-aid kit."}
+  ]
+}

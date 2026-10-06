@@ -104,3 +104,19 @@ def test_enemy_is_blocked_by_walls():
 def test_wave_multipliers_scale_stats():
     e = make_enemy((100, 100), health_multiplier=2.0, damage_multiplier=2.0)
     assert e.max_health == 120 and e.attack_damage == 20
+
+
+
+def test_relentless_enemy_hunts_from_any_distance():
+    e = make_enemy((100, 100))
+    e.relentless = True
+    e.update(0.1, Vector2(3000, 100), True, [])
+    assert e.state is AIState.CHASE
+
+
+def test_relentless_enemy_never_gives_up():
+    e = make_enemy((100, 100))
+    e.relentless = True
+    for _ in range(100):
+        e.update(0.1, Vector2(5000, 100), True, [])
+    assert e.state is AIState.CHASE

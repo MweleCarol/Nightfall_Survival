@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from src.core import settings
 from src.services.data_loader import DataLoadError, load_json, require_field
@@ -62,22 +63,47 @@ def load_weapon_defs(path: str = settings.WEAPONS_FILE) -> dict[str, WeaponDef]:
         definitions[definition.id] = definition
     return definitions
 
+class AmmoSource(Protocol):
+    """Anything that can hold ammo (the player's Inventory satisfies this)."""
+
+    def count(self, item_id: str) -> int: ...
+    def remove(self, item_id: str, quantity: int) -> int: ...
+
 
 class Weapon:
     """A weapon being carried: ammo, cooldown and reload state.
 
-    `reserve` is spare ammo for now; Milestone 5 moves it into the Inventory.
+    Spare ammo comes from `ammo_source` (the Inventory) when one is given,
+    otherwise from a plain `reserve` number (handy for tests).
     """
 
     def __init__(self, definition: WeaponDef, loaded: int | None = None,
-                 reserve: int = 0) -> None:
+                 reserve: int = 0, ammo_source: AmmoSource | None = None) -> None:
         self.definition = definition
         start = definition.magazine_size if loaded is None else loaded
         self.loaded = max(0, min(definition.magazine_size, start))
-        self.reserve = max(0, reserve)
+        self._reserve = max(0, reserve)
+        self.ammo_source = ammo_source
         self.cooldown = 0.0
         self.reload_remaining = 0.0
         self.is_reloading = False
+
+    @property
+    def ammo_item_id(self) -> str:
+        return f"ammo_{self.definition.ammo_type}"
+
+    @property
+    def reserve(self) -> int:
+        if self.ammo_source is not None:
+            return self.ammo_source.count(self.ammo_item_id)
+        return self._reserve
+
+    def _take_reserve(self, amount: int) -> int:
+        if self.ammo_source is not None:
+            return self.ammo_source.remove(self.ammo_item_id, amount)
+        taken = min(amount, self._reserve)
+        self._reserve -= taken
+        return taken
 
     def can_fire(self) -> bool:
         return not self.is_reloading and self.loaded > 0 and self.cooldown <= 0
@@ -115,8 +141,6 @@ class Weapon:
 
     def _finish_reload(self) -> None:
         needed = self.definition.magazine_size - self.loaded
-        moved = min(needed, self.reserve)
-        self.loaded += moved
-        self.reserve -= moved
+        self.loaded += self._take_reserve(needed)
         self.is_reloading = False
         self.reload_remaining = 0.0
