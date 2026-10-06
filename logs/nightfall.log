@@ -1,0 +1,3 @@
+13:42:21 | INFO     | nightfall.core.state_manager | State -> BOOT
+13:42:21 | INFO     | nightfall.core.game | Game started (1280x720 @ 60 FPS)
+13:42:35 | INFO     | nightfall.core.game | Game shut down cleanly
