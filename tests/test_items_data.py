@@ -80,3 +80,11 @@ def test_invalid_item_type_is_rejected():
     data = {"id": "x", "name": "X", "type": "weapon", "max_stack": 1, "rarity": "common"}
     with pytest.raises(DataLoadError, match="type"):
         ItemDef.from_dict(data, "test")
+
+
+
+def test_luck_removes_empty_results():
+    table = make_table([LootEntry("scrap", 1, 1, 1)], empty=1000.0)
+    loot = LootSystem({"t": table}, random.Random(1))
+    assert all(loot.roll("t", luck=1.0) for _ in range(100))
+    assert all(loot.roll("t", luck=5.0) for _ in range(100))   # luck is clamped, never negative

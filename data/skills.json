@@ -1,0 +1,22 @@
+{
+  "skills": [
+    {"id": "vitality", "name": "Vitality", "category": "survivor", "stat": "max_health",
+     "per_rank": 10, "max_rank": 5, "description": "+10 maximum health per rank."},
+    {"id": "endurance", "name": "Endurance", "category": "survivor", "stat": "max_stamina",
+     "per_rank": 10, "max_rank": 5, "description": "+10 maximum stamina per rank."},
+    {"id": "light_feet", "name": "Light Feet", "category": "survivor", "stat": "move_speed",
+     "per_rank": 0.04, "max_rank": 5, "description": "+4% movement speed per rank."},
+    {"id": "hard_hitter", "name": "Hard Hitter", "category": "combat", "stat": "damage",
+     "per_rank": 0.08, "max_rank": 5, "description": "+8% weapon damage per rank."},
+    {"id": "quick_hands", "name": "Quick Hands", "category": "combat", "stat": "reload_time_reduction",
+     "per_rank": 0.08, "max_rank": 5, "description": "Reload 8% faster per rank."},
+    {"id": "precision", "name": "Precision", "category": "combat", "stat": "crit_chance",
+     "per_rank": 0.03, "max_rank": 5, "description": "+3% critical hit chance per rank. Criticals deal double damage."},
+    {"id": "pack_rat", "name": "Pack Rat", "category": "survival", "stat": "carry_slots",
+     "per_rank": 2, "max_rank": 5, "description": "+2 inventory slots per rank."},
+    {"id": "scavenger", "name": "Scavenger", "category": "survival", "stat": "loot_luck",
+     "per_rank": 0.10, "max_rank": 4, "description": "Crates and kills are 10% less likely to give nothing, per rank."},
+    {"id": "waste_not", "name": "Waste Not", "category": "survival", "stat": "free_craft_chance",
+     "per_rank": 0.10, "max_rank": 4, "description": "10% chance per rank that crafting costs nothing."}
+  ]
+}

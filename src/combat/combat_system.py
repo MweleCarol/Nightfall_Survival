@@ -24,6 +24,7 @@ class Tracer:
     end: Vector2
     life: float
     hit_enemy: bool
+    critical: bool = False
 
 
 class CombatSystem:
@@ -39,7 +40,8 @@ class CombatSystem:
         self.tracers = [t for t in self.tracers if t.life > 0]
 
     def fire_weapon(self, origin: Vector2, aim_direction: Vector2, weapon: Weapon,
-                    enemies: Sequence[Enemy], walls: Sequence[pygame.Rect]) -> bool:
+                    enemies: Sequence[Enemy], walls: Sequence[pygame.Rect],
+                    crit_chance: float = 0.0) -> bool:
         """Try to fire. Returns True if a shot was actually fired."""
         if not weapon.fire():
             return False
@@ -50,31 +52,41 @@ class CombatSystem:
 
         end = origin + direction * hit.distance
         muzzle = origin + direction * settings.MUZZLE_OFFSET
-        self.tracers.append(Tracer(muzzle, end, settings.TRACER_LIFETIME,
-                                   hit.enemy is not None))
-        self._emit("SHOT_FIRED", {"weapon": definition.id})
+        critical = False
 
         if hit.enemy is not None:
-            damage = calculate_damage(definition.damage)
-            if hit.enemy.take_damage(damage):
+            critical = crit_chance > 0 and self.rng.random() < crit_chance
+            damage = calculate_damage(weapon.damage, critical=critical,
+                                      critical_multiplier=settings.CRIT_MULTIPLIER)
+            killed = hit.enemy.take_damage(damage)
+            self._emit("ENEMY_HIT", {"damage": damage, "critical": critical})
+            if killed:
                 self._emit("ENEMY_DIED", {
                     "enemy_id": hit.enemy.definition.id,
                     "xp": hit.enemy.xp_reward,
                     "position": (hit.enemy.position.x, hit.enemy.position.y),
                 })
+
+        self.tracers.append(Tracer(muzzle, end, settings.TRACER_LIFETIME,
+                                   hit.enemy is not None, critical))
+        self._emit("SHOT_FIRED", {"weapon": definition.id})
         return True
 
     def draw(self, surface: pygame.Surface, camera: Camera) -> None:
         for tracer in self.tracers:
             fade = max(0.0, tracer.life / settings.TRACER_LIFETIME)
-            color = (int(255 * fade), int(220 * fade), int(120 * fade))
+            if tracer.critical:                              # criticals glow gold-white
+                color = (int(255 * fade), int(245 * fade), int(170 * fade))
+            else:
+                color = (int(255 * fade), int(220 * fade), int(120 * fade))
             start = camera.world_to_screen(tracer.start)
             end = camera.world_to_screen(tracer.end)
-            pygame.draw.line(surface, color, start, end, 2)
+            pygame.draw.line(surface, color, start, end, 3 if tracer.critical else 2)
             if fade > 0.5:                                  # muzzle flash
                 pygame.draw.circle(surface, settings.COLOR_AMBER, start, 7)
             if tracer.hit_enemy:                            # impact spark
-                pygame.draw.circle(surface, settings.COLOR_ACCENT, end, 6)
+                spark = settings.COLOR_AMBER if tracer.critical else settings.COLOR_ACCENT
+                pygame.draw.circle(surface, spark, end, 9 if tracer.critical else 6)
 
     def _emit(self, event: str, data: dict) -> None:
         if self.event_bus is not None:

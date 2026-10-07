@@ -48,6 +48,13 @@
     "safe_margin": 100
   },
 
+  "stations": [
+    {"id": "workbench", "kind": "workbench", "rect": [1750, 1310, 150, 90],
+     "prompt": "Press E to use the workbench"},
+    {"id": "weapon_station", "kind": "weapon_station", "rect": [2200, 1310, 150, 90],
+     "prompt": "Press E to upgrade your weapon"}
+  ],
+
   "loot_points": [
     {"id": "loot_01", "pos": [2100, 650],  "category": "medical"},
     {"id": "loot_02", "pos": [1250, 650],  "category": "general"},

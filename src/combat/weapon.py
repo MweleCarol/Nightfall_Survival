@@ -63,6 +63,7 @@ def load_weapon_defs(path: str = settings.WEAPONS_FILE) -> dict[str, WeaponDef]:
         definitions[definition.id] = definition
     return definitions
 
+
 class AmmoSource(Protocol):
     """Anything that can hold ammo (the player's Inventory satisfies this)."""
 
@@ -71,10 +72,15 @@ class AmmoSource(Protocol):
 
 
 class Weapon:
-    """A weapon being carried: ammo, cooldown and reload state.
+    """A weapon being carried: ammo, cooldown, reload state and upgrades.
 
     Spare ammo comes from `ammo_source` (the Inventory) when one is given,
     otherwise from a plain `reserve` number (handy for tests).
+
+    `modifiers` holds the combined bonus from skills and weapon upgrades:
+        "damage"   - fraction, 0.2 means +20% damage
+        "reload"   - fraction, 0.2 means reloads take 20% less time
+        "magazine" - extra rounds in the magazine
     """
 
     def __init__(self, definition: WeaponDef, loaded: int | None = None,
@@ -84,10 +90,27 @@ class Weapon:
         self.loaded = max(0, min(definition.magazine_size, start))
         self._reserve = max(0, reserve)
         self.ammo_source = ammo_source
+        self.modifiers: dict[str, float] = {}
+        self.upgrade_levels: dict[str, int] = {}   # which upgrades were bought, and how far
         self.cooldown = 0.0
         self.reload_remaining = 0.0
         self.is_reloading = False
 
+    # ---- stats with modifiers applied ----
+    @property
+    def damage(self) -> int:
+        return max(1, round(self.definition.damage * (1.0 + self.modifiers.get("damage", 0.0))))
+
+    @property
+    def magazine_size(self) -> int:
+        return self.definition.magazine_size + round(self.modifiers.get("magazine", 0.0))
+
+    @property
+    def reload_time(self) -> float:
+        factor = max(0.25, 1.0 - self.modifiers.get("reload", 0.0))   # never faster than 25%
+        return self.definition.reload_time * factor
+
+    # ---- ammo ----
     @property
     def ammo_item_id(self) -> str:
         return f"ammo_{self.definition.ammo_type}"
@@ -105,6 +128,7 @@ class Weapon:
         self._reserve -= taken
         return taken
 
+    # ---- firing and reloading ----
     def can_fire(self) -> bool:
         return not self.is_reloading and self.loaded > 0 and self.cooldown <= 0
 
@@ -118,19 +142,19 @@ class Weapon:
 
     def start_reload(self) -> bool:
         """Begin reloading. False if pointless (full magazine / no spare ammo)."""
-        if (self.is_reloading or self.loaded >= self.definition.magazine_size
+        if (self.is_reloading or self.loaded >= self.magazine_size
                 or self.reserve <= 0):
             return False
         self.is_reloading = True
-        self.reload_remaining = self.definition.reload_time
+        self.reload_remaining = self.reload_time
         return True
 
     @property
     def reload_progress(self) -> float:
         """0.0 -> 1.0 while reloading (for the HUD bar)."""
-        if not self.is_reloading or self.definition.reload_time <= 0:
+        if not self.is_reloading or self.reload_time <= 0:
             return 0.0
-        return 1.0 - self.reload_remaining / self.definition.reload_time
+        return 1.0 - self.reload_remaining / self.reload_time
 
     def update(self, dt: float) -> None:
         self.cooldown = max(0.0, self.cooldown - dt)
@@ -140,7 +164,7 @@ class Weapon:
                 self._finish_reload()
 
     def _finish_reload(self) -> None:
-        needed = self.definition.magazine_size - self.loaded
+        needed = self.magazine_size - self.loaded
         self.loaded += self._take_reserve(needed)
         self.is_reloading = False
         self.reload_remaining = 0.0

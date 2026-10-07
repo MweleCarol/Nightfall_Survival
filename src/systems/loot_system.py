@@ -84,25 +84,27 @@ class LootSystem:
         specific = f"drop_{enemy_id}"
         return specific if specific in self.tables else "enemy_drop"
 
-    def roll(self, table_id: str) -> list[tuple[str, int]]:
+    def roll(self, table_id: str, luck: float = 0.0) -> list[tuple[str, int]]:
+        """Roll a table. `luck` (0.0-1.0) shrinks the chance of getting nothing."""
         table = self.tables.get(table_id)
         if table is None:
             raise DataLoadError(f"Unknown loot table '{table_id}'")
         totals: dict[str, int] = {}
         for _ in range(self.rng.randint(table.rolls_min, table.rolls_max)):
-            entry = self._pick(table)
+            entry = self._pick(table, luck)
             if entry is None:
                 continue
             quantity = self.rng.randint(entry.min_qty, entry.max_qty)
             totals[entry.item_id] = totals.get(entry.item_id, 0) + quantity
         return list(totals.items())
 
-    def _pick(self, table: LootTable) -> LootEntry | None:
-        total = table.empty_weight + sum(e.weight for e in table.entries)
+    def _pick(self, table: LootTable, luck: float) -> LootEntry | None:
+        empty_weight = table.empty_weight * max(0.0, 1.0 - luck)
+        total = empty_weight + sum(e.weight for e in table.entries)
         point = self.rng.uniform(0, total)
-        if point < table.empty_weight:
+        if point < empty_weight:
             return None
-        point -= table.empty_weight
+        point -= empty_weight
         for entry in table.entries:
             if point < entry.weight:
                 return entry

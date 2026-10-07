@@ -87,3 +87,15 @@ RARITY_COLORS = {
     "epic": (180, 100, 230),
     "legendary": (245, 165, 36),
 }
+
+
+# --- Progression ---
+SKILLS_FILE = "data/skills.json"
+CRAFTING_FILE = "data/crafting.json"
+XP_BASE = 100                  # XP needed to leave level 1
+XP_GROWTH = 1.3                # each level needs 30% more than the last
+MAX_LEVEL = 20
+XP_PER_WAVE = 25               # multiplied by the wave number (wave 3 = 75 XP)
+XP_NIGHT_CLEARED = 75
+XP_CONTAINER_SEARCH = 3
+CRIT_MULTIPLIER = 2.0

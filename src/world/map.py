@@ -25,6 +25,7 @@ BUILDING_COLORS = {
 }
 DEFAULT_BUILDING_COLOR = (40, 52, 76)
 OBSTACLE_COLORS = {"vehicle": (62, 66, 84), "dumpster": (44, 70, 56)}
+STATION_LABELS = {"workbench": "WORKBENCH", "weapon_station": "WEAPON STATION"}
 
 
 @dataclass
@@ -151,10 +152,25 @@ class GameMap:
             Interactable("safehouse_rest", door, "Press E to prepare for nightfall", "rest")
         ]
 
+        # Optional crafting / upgrade stations placed around the safehouse.
+        stations = data.get("stations", [])
+        if not isinstance(stations, list):
+            raise DataLoadError(f"{source}: field 'stations' must be list")
+        for i, station in enumerate(stations):
+            where = f"{source}: stations[{i}]"
+            if not isinstance(station, dict):
+                raise DataLoadError(f"{where}: must be an object")
+            self.interactables.append(Interactable(
+                _get(station, "id", str, where),
+                _rect(station.get("rect"), f"{where}.rect"),
+                _get(station, "prompt", str, where),
+                _get(station, "kind", str, where)))
+
         self.walls: list[pygame.Rect] = (
             [b.rect for b in self.buildings] + [o.rect for o in self.obstacles])
 
         self._font: pygame.font.Font | None = None
+        self._station_font: pygame.font.Font | None = None
         self._labels: dict[str, pygame.Surface] = {}
 
     @classmethod
@@ -177,11 +193,14 @@ class GameMap:
         view = camera.view_rect()
         self._draw_grid(surface, camera, view)
 
-        for item in self.interactables:               # the safehouse "doormat"
+        for item in self.interactables:               # the doormat and the stations
             if item.rect.colliderect(view):
                 r = camera.apply(item.rect)
                 pygame.draw.rect(surface, COLOR_DOOR, r)
                 pygame.draw.rect(surface, settings.COLOR_AMBER, r, 2)
+                if item.kind != "rest":
+                    label = self._station_label(item)
+                    surface.blit(label, label.get_rect(center=r.center))
 
         for building in self.buildings:               # culling: on-screen only
             if building.rect.colliderect(view):
@@ -235,3 +254,12 @@ class GameMap:
             color = settings.COLOR_AMBER if b.type == "safehouse" else settings.COLOR_MUTED
             self._labels[b.id] = self._font.render(b.name.upper(), True, color)
         return self._labels[b.id]
+
+    def _station_label(self, item: Interactable) -> pygame.Surface:
+        key = f"station:{item.id}"
+        if key not in self._labels:
+            if self._station_font is None:
+                self._station_font = pygame.font.SysFont("arial", 16, bold=True)
+            text = STATION_LABELS.get(item.kind, item.kind.upper())
+            self._labels[key] = self._station_font.render(text, True, settings.COLOR_AMBER)
+        return self._labels[key]

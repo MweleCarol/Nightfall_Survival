@@ -1,4 +1,4 @@
-"""The player: position, movement, collision, aim, weapon."""
+"""The player: position, movement, collision, aim, weapon, inventory."""
 from __future__ import annotations
 
 from typing import Sequence
@@ -8,20 +8,21 @@ from pygame import Vector2
 
 from src.combat.weapon import Weapon
 from src.core import settings
+from src.player.inventory import Inventory
 from src.player.stats import Stats
 from src.world.camera import Camera
 from src.world.collision import collide_axis
-from src.player.inventory import Inventory
 
 
 class Player:
-    def __init__(self, position: tuple[float, float],weapon: Weapon | None = None,
+    def __init__(self, position: tuple[float, float], weapon: Weapon | None = None,
                  inventory: Inventory | None = None) -> None:
         self.position = Vector2(position)
         self.velocity = Vector2(0, 0)
         self.stats = Stats()
         self.weapon = weapon
         self.inventory = inventory
+        self.speed_multiplier = 1.0
         self.rect = pygame.Rect(0, 0, settings.PLAYER_SIZE, settings.PLAYER_SIZE)
         self.aim_direction = Vector2(1, 0)
         self.is_sprinting = False
@@ -40,6 +41,24 @@ class Player:
         if dealt:
             self.hurt_timer = settings.PLAYER_HURT_FLASH
         return dealt
+
+    def apply_bonuses(self, health_bonus: int, stamina_bonus: float, speed_bonus: float) -> None:
+        """Set skill bonuses. Raising a maximum also grants the difference as current value."""
+        new_max_health = settings.PLAYER_MAX_HEALTH + health_bonus
+        health_gain = new_max_health - self.stats.max_health
+        self.stats.max_health = new_max_health
+        if health_gain > 0 and not self.stats.is_dead:
+            self.stats.health += health_gain
+        self.stats.health = min(self.stats.health, self.stats.max_health)
+
+        new_max_stamina = settings.PLAYER_MAX_STAMINA + stamina_bonus
+        stamina_gain = new_max_stamina - self.stats.max_stamina
+        self.stats.max_stamina = new_max_stamina
+        if stamina_gain > 0:
+            self.stats.stamina += stamina_gain
+        self.stats.stamina = min(self.stats.stamina, self.stats.max_stamina)
+
+        self.speed_multiplier = 1.0 + speed_bonus
 
     def use_item(self, item_id: str) -> bool:
         """Use a consumable from the inventory. Returns True if it was used."""
@@ -89,7 +108,7 @@ class Player:
             direction = direction.normalize()  # W+D is not faster than W
 
         self.is_sprinting = self._resolve_sprint(sprint_held and moving)
-        speed = settings.PLAYER_SPEED
+        speed = settings.PLAYER_SPEED * self.speed_multiplier
         if self.is_sprinting:
             speed *= settings.PLAYER_SPRINT_MULTIPLIER
         self.velocity = direction * speed

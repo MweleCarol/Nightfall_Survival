@@ -1,4 +1,4 @@
-"""The in-game state: world, player, combat, waves, loot, HUD."""
+"""The in-game state: world, player, combat, waves, loot, progression, HUD."""
 from __future__ import annotations
 
 import random
@@ -15,17 +15,30 @@ from src.enemies.factory import EnemyFactory
 from src.player.inventory import Inventory, load_item_defs
 from src.player.player import Player
 from src.services.data_loader import DataLoadError
+from src.systems.crafting import CraftingSystem, load_crafting_data
 from src.systems.loot_system import LootSystem, load_loot_tables
+from src.systems.progression import Progression
+from src.systems.skills import SkillSet, load_skill_defs
 from src.systems.wave_manager import WaveManager, load_wave_config
 from src.ui.combat_hud import CombatHUD
 from src.ui.hud import HUD
 from src.ui.inventory_ui import InventoryUI
+from src.ui.progression_hud import ProgressionHUD
+from src.ui.skills_ui import SkillsUI
 from src.ui.survival_hud import SurvivalHUD
+from src.ui.workshop_ui import WorkshopUI
 from src.world.camera import Camera
 from src.world.day_night import DayNightCycle
 from src.world.lighting import Lighting
 from src.world.loot_objects import LootContainer, Pickup
 from src.world.map import GameMap
+
+# Keys that close each overlay screen.
+OVERLAY_CLOSE_KEYS = {
+    "inventory": (pygame.K_TAB, pygame.K_ESCAPE),
+    "skills": (pygame.K_k, pygame.K_ESCAPE),
+    "workshop": (pygame.K_e, pygame.K_ESCAPE),
+}
 
 
 class PlayingState(GameState):
@@ -54,11 +67,20 @@ class PlayingState(GameState):
         self.cycle = DayNightCycle(event_bus=self.game.event_bus)
         self.lighting = Lighting(settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT)
 
+        # Progression, skills and crafting
+        self.progression = Progression(event_bus=self.game.event_bus)
+        self.skills = SkillSet(load_skill_defs())
+        self.crafting = CraftingSystem(load_crafting_data(self.item_defs), self.inventory, self.rng)
+
         # UI
         self.hud = HUD()
         self.combat_hud = CombatHUD()
         self.survival_hud = SurvivalHUD()
+        self.progression_hud = ProgressionHUD()
         self.inventory_ui = InventoryUI()
+        self.skills_ui = SkillsUI(self.skills, self.progression)
+        self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills)
+        self.active_overlay: str | None = None
         self.debug_font = pygame.font.SysFont("arial", 16, bold=True)
 
         # Combat, enemies, waves, loot
@@ -81,13 +103,17 @@ class PlayingState(GameState):
         self._death_announced = False
         self.death_timer = 0.0
 
+        self._apply_skill_effects()
+
         self._subscriptions = [
             ("NIGHT_STARTED", self._on_night_started),
             ("NIGHT_COMPLETED", self._on_night_completed),
             ("DAY_STARTED", self._on_day_started),
             ("ENEMY_DIED", self._on_enemy_died),
             ("WAVE_STARTED", self._on_wave_started),
+            ("WAVE_COMPLETED", self._on_wave_completed),
             ("NIGHT_CLEARED", self._on_night_cleared),
+            ("LEVEL_UP", self._on_level_up),
         ]
         for event, handler in self._subscriptions:
             self.game.event_bus.on(event, handler)
@@ -98,6 +124,20 @@ class PlayingState(GameState):
         for event, handler in self._subscriptions:
             self.game.event_bus.off(event, handler)
         pygame.mouse.set_visible(True)
+
+    # ---- skills: turn ranks and upgrades into real stats ----
+    def _apply_skill_effects(self) -> None:
+        skills, weapon = self.skills, self.player.weapon
+        self.player.apply_bonuses(int(skills.bonus("max_health")),
+                                  skills.bonus("max_stamina"),
+                                  skills.bonus("move_speed"))
+        self.inventory.capacity = settings.INVENTORY_CAPACITY + int(skills.bonus("carry_slots"))
+        weapon.modifiers = {
+            "damage": skills.bonus("damage") + self.crafting.upgrade_bonus("damage", weapon),
+            "reload": (skills.bonus("reload_time_reduction")
+                       + self.crafting.upgrade_bonus("reload", weapon)),
+            "magazine": self.crafting.upgrade_bonus("magazine", weapon),
+        }
 
     # ---- event bus handlers ----
     def _on_night_started(self, data: dict) -> None:
@@ -116,24 +156,27 @@ class PlayingState(GameState):
     def _on_wave_started(self, data: dict) -> None:
         self.hud.notify(f"WAVE {data['wave']} / {self.wave_manager.config.waves_per_night}")
 
+    def _on_wave_completed(self, data: dict) -> None:
+        self.progression.add_xp(settings.XP_PER_WAVE * data["wave"])
+
     def _on_night_cleared(self, data: dict) -> None:
         self.hud.notify("NIGHT CLEARED - HOLD UNTIL DAWN")
+        self.progression.add_xp(settings.XP_NIGHT_CLEARED)
 
     def _on_enemy_died(self, data: dict) -> None:
         self.kills += 1
+        self.progression.add_xp(data["xp"])
         table = self.loot.table_for_enemy(data["enemy_id"])
-        for item_id, quantity in self.loot.roll(table):
+        for item_id, quantity in self.loot.roll(table, self.skills.bonus("loot_luck")):
             self._drop_pickup(item_id, quantity, Vector2(data["position"]))
+
+    def _on_level_up(self, data: dict) -> None:
+        self.hud.notify(f"LEVEL UP!  LEVEL {data['level']}  -  PRESS K")
 
     # ---- input ----
     def handle_event(self, event: pygame.event.Event) -> None:
-        if self.inventory_ui.open:
-            if event.type == pygame.KEYDOWN and event.key in (pygame.K_TAB, pygame.K_ESCAPE):
-                self.inventory_ui.toggle()
-                return
-            message = self.inventory_ui.handle_event(event, self.player)
-            if message:
-                self.hud.notify(message, 2.0)
+        if self.active_overlay is not None:
+            self._handle_overlay_event(event)
             return
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -147,8 +190,9 @@ class PlayingState(GameState):
             from src.states.boot_state import BootState  # avoid circular import
             self.game.state_manager.change_state(BootState(self.game))
         elif key == pygame.K_TAB:
-            if not self.player.stats.is_dead:
-                self.inventory_ui.toggle()
+            self._open_overlay("inventory")
+        elif key == pygame.K_k:
+            self._open_overlay("skills")
         elif key == pygame.K_e:
             self._interact()
         elif key == pygame.K_q:
@@ -158,21 +202,55 @@ class PlayingState(GameState):
                 self.player.weapon.start_reload()
         elif key == pygame.K_F3:
             self.debug = not self.debug
-        elif key == pygame.K_t:      # DEBUG ONLY
+        elif key == pygame.K_t:      # DEBUG ONLY: spawn a Walker at the cursor
             self._debug_spawn_walker()
-        elif key == pygame.K_n:      # DEBUG ONLY
+        elif key == pygame.K_n:      # DEBUG ONLY: skip day/night
             self.cycle.skip_to_next_phase()
+        elif key == pygame.K_x:      # DEBUG ONLY: +100 XP
+            self.progression.add_xp(100)
+        elif key == pygame.K_g:      # DEBUG ONLY: free crafting materials
+            for item_id, quantity in (("scrap", 20), ("chemicals", 10), ("medical_supplies", 10),
+                                      ("weapon_parts", 6), ("batteries", 4)):
+                self.inventory.add(item_id, quantity)
+            self.hud.notify("DEBUG: materials added", 1.5)
         elif key == pygame.K_h:      # DEBUG ONLY
             self.player.take_damage(10)
         elif key == pygame.K_j:      # DEBUG ONLY
             self.player.stats.heal(10)
 
+    def _open_overlay(self, name: str) -> None:
+        if self.player.stats.is_dead:
+            return
+        self.active_overlay = name
+        if name == "inventory":
+            self.inventory_ui.selected = 0
+        elif name == "skills":
+            self.skills_ui.reset()
+
+    def _handle_overlay_event(self, event: pygame.event.Event) -> None:
+        if event.type != pygame.KEYDOWN:
+            return
+        name = self.active_overlay
+        if event.key in OVERLAY_CLOSE_KEYS[name]:
+            self.active_overlay = None
+            return
+        if name == "inventory":
+            message = self.inventory_ui.handle_event(event, self.player)
+        elif name == "skills":
+            message = self.skills_ui.handle_event(event)
+        else:
+            message = self.workshop_ui.handle_event(event)
+        if name != "inventory":
+            self._apply_skill_effects()          # ranks or weapon upgrades may have changed
+        if message:
+            self.hud.notify(message, 2.0)
+
     # ---- update ----
     def update(self, dt: float) -> None:
         self.hud.update(dt)
-        if self.inventory_ui.open:
+        if self.active_overlay is not None:
             self.fire_pressed = False
-            return                                # the inventory pauses the game
+            return                                # menus pause the game
 
         self.full_notice_timer = max(0.0, self.full_notice_timer - dt)
         self.cycle.update(dt)
@@ -207,7 +285,8 @@ class PlayingState(GameState):
                 weapon.start_reload()      # clicking on an empty gun reloads
             else:
                 self.combat.fire_weapon(self.player.position, self.player.aim_direction,
-                                        weapon, self.enemies, self.map.walls)
+                                        weapon, self.enemies, self.map.walls,
+                                        crit_chance=self.skills.bonus("crit_chance"))
 
     def _update_waves(self, dt: float) -> None:
         alive = sum(1 for enemy in self.enemies if not enemy.is_dead)
@@ -271,9 +350,14 @@ class PlayingState(GameState):
                 best, best_distance = container, distance
         if best is not None:
             return ("container", best, "Press E to search")
-        door = self.map.interactable_at(self.player.rect)
-        if door is not None and door.kind == "rest" and self.cycle.is_day:
-            return ("rest", door, door.prompt)
+
+        zone = self.map.interactable_at(self.player.rect)
+        if zone is not None:
+            if zone.kind == "rest":
+                if self.cycle.is_day:            # resting is only offered during the day
+                    return ("rest", zone, zone.prompt)
+            else:
+                return ("station", zone, zone.prompt)
         return None
 
     def _interact(self) -> None:
@@ -284,10 +368,14 @@ class PlayingState(GameState):
             self._search_container(target)
         elif kind == "rest":
             self.cycle.skip_to_next_phase()
+        elif kind == "station":
+            self.workshop_ui.open_tab("craft" if target.kind == "workbench" else "weapon")
+            self.active_overlay = "workshop"
 
     def _search_container(self, container: LootContainer) -> None:
         container.opened = True
-        drops = self.loot.roll(container.category)
+        self.progression.add_xp(settings.XP_CONTAINER_SEARCH)
+        drops = self.loot.roll(container.category, self.skills.bonus("loot_luck"))
         if not drops:
             self.hud.notify("Nothing useful here", 2.0)
             return
@@ -361,5 +449,11 @@ class PlayingState(GameState):
         self.combat_hud.draw(surface, self.player.weapon, pygame.mouse.get_pos(), alive)
         self.survival_hud.draw(surface, self.wave_manager, alive, self.inventory,
                                self.cycle.is_night)
-        if self.inventory_ui.open:
+        self.progression_hud.draw(surface, self.progression)
+
+        if self.active_overlay == "inventory":
             self.inventory_ui.draw(surface, self.player)
+        elif self.active_overlay == "skills":
+            self.skills_ui.draw(surface)
+        elif self.active_overlay == "workshop":
+            self.workshop_ui.draw(surface)

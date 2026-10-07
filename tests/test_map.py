@@ -75,3 +75,11 @@ def test_invalid_json_raises(tmp_path):
     bad.write_text("{not json", encoding="utf-8")
     with pytest.raises(DataLoadError, match="Invalid JSON"):
         load_json(str(bad))
+
+
+def test_stations_exist_and_are_safe_and_reachable(city):
+    kinds = {item.kind for item in city.interactables}
+    assert {"rest", "workbench", "weapon_station"} <= kinds
+    for item in city.interactables:
+        assert item.rect.collidelist(city.walls) == -1, item.id
+        assert city.safe_zone.contains(item.rect), item.id

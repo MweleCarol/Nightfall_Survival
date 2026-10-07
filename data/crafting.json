@@ -1,0 +1,54 @@
+{
+  "recipes": [
+    {
+      "id": "craft_bandage", "name": "Bandage x2",
+      "description": "Wrap up minor wounds. Restores 15 HP each.",
+      "output": {"item": "bandage", "quantity": 2},
+      "cost": {"scrap": 1, "medical_supplies": 1}
+    },
+    {
+      "id": "craft_medkit", "name": "Medkit",
+      "description": "A proper first-aid kit. Restores 35 HP.",
+      "output": {"item": "medkit", "quantity": 1},
+      "cost": {"scrap": 2, "chemicals": 2, "medical_supplies": 2}
+    },
+    {
+      "id": "craft_ammo", "name": "9mm Ammo x12",
+      "description": "Hand-loaded rounds.",
+      "output": {"item": "ammo_9mm", "quantity": 12},
+      "cost": {"scrap": 3, "chemicals": 1}
+    }
+  ],
+  "weapon_upgrades": [
+    {
+      "id": "damage", "name": "Hardened Rounds",
+      "description": "+20% weapon damage per level.",
+      "stat": "damage", "per_level": 0.2,
+      "levels": [
+        {"scrap": 6, "weapon_parts": 1},
+        {"scrap": 10, "weapon_parts": 2},
+        {"scrap": 16, "weapon_parts": 3}
+      ]
+    },
+    {
+      "id": "magazine", "name": "Extended Magazine",
+      "description": "+3 rounds in the magazine per level.",
+      "stat": "magazine", "per_level": 3,
+      "levels": [
+        {"scrap": 5, "weapon_parts": 1},
+        {"scrap": 8, "weapon_parts": 2},
+        {"scrap": 12, "weapon_parts": 2, "batteries": 2}
+      ]
+    },
+    {
+      "id": "reload", "name": "Fast Loader",
+      "description": "Reload 12% faster per level.",
+      "stat": "reload", "per_level": 0.12,
+      "levels": [
+        {"scrap": 5, "weapon_parts": 1},
+        {"scrap": 8, "weapon_parts": 2},
+        {"scrap": 12, "weapon_parts": 2, "batteries": 2}
+      ]
+    }
+  ]
+}
