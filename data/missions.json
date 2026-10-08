@@ -1,0 +1,112 @@
+{
+  "missions": [
+    {
+      "id": "first_light", "category": "story", "chapter": 1,
+      "title": "First Light",
+      "description": "You woke up alone in a dead city. Search the district for supplies, then make your way back to the safehouse before night falls.",
+      "requires": [],
+      "objectives": [
+        {"type": "search_containers", "quantity": 3, "description": "Search crates"},
+        {"type": "reach_location", "target": "safehouse_door", "description": "Return to the safehouse door"}
+      ],
+      "rewards": {"xp": 60, "items": {"bandage": 2, "scrap": 5}}
+    },
+    {
+      "id": "survive_night_one", "category": "story", "chapter": 1,
+      "title": "The First Night",
+      "description": "After dark the city wakes up. Hold out until dawn and thin out what comes for you. Rest at the safehouse door to bring the night on.",
+      "requires": ["first_light"],
+      "objectives": [
+        {"type": "defeat_enemy", "target": "any", "quantity": 5, "description": "Defeat creatures"},
+        {"type": "survive_night", "target": 1, "description": "Survive until dawn"}
+      ],
+      "rewards": {"xp": 120, "items": {"medkit": 1, "ammo_9mm": 24}, "unlock_chapter": 2}
+    },
+    {
+      "id": "follow_the_signal", "category": "story", "chapter": 2,
+      "title": "Follow the Signal",
+      "description": "A repeating broadcast leads to St. Mary's Hospital. Find out who is sending it.",
+      "requires": ["survive_night_one"],
+      "objectives": [
+        {"type": "reach_location", "target": "hospital_entrance", "description": "Reach St. Mary's Hospital"},
+        {"type": "interact", "target": "nurse_note", "description": "Read the page at the entrance"}
+      ],
+      "rewards": {"xp": 100, "items": {"bandage": 2, "chemicals": 2}}
+    },
+    {
+      "id": "the_radio", "category": "story", "chapter": 2,
+      "title": "The Radio",
+      "description": "The hospital's emergency radio is in the service alley, but the building has no power. Restore the generator, then take the radio.",
+      "requires": ["follow_the_signal"],
+      "objectives": [
+        {"type": "reach_location", "target": "hospital_service_alley", "description": "Reach the hospital service alley"},
+        {"type": "interact", "target": "power_generator", "description": "Restore the generator"},
+        {"type": "collect_item", "target": "radio_unit", "description": "Retrieve the radio"}
+      ],
+      "rewards": {"xp": 250, "items": {"scrap": 20}, "unlock_chapter": 3}
+    },
+    {
+      "id": "into_the_dark", "category": "story", "chapter": 3,
+      "title": "Into the Dark",
+      "description": "The radio picked up a second signal from a research site to the south. The creatures are getting faster. Survive another night and learn how they move.",
+      "requires": ["the_radio"],
+      "objectives": [
+        {"type": "defeat_enemy", "target": "stalker", "quantity": 3, "description": "Defeat Stalkers"},
+        {"type": "survive_night", "target": 2, "description": "Survive night 2"}
+      ],
+      "rewards": {"xp": 200, "items": {"weapon_parts": 2, "medkit": 1}}
+    },
+    {
+      "id": "the_facility", "category": "story", "chapter": 3,
+      "title": "The Facility",
+      "description": "Find the research facility at the south end of the warehouse district and copy whatever data its terminal still holds.",
+      "requires": ["into_the_dark"],
+      "objectives": [
+        {"type": "reach_location", "target": "facility_gate", "description": "Reach the facility gate"},
+        {"type": "collect_item", "target": "data_drive", "description": "Copy the facility data drive"}
+      ],
+      "rewards": {"xp": 300, "items": {"ammo_9mm": 36}, "unlock_chapter": 4}
+    },
+    {
+      "id": "the_truth", "category": "story", "chapter": 4,
+      "title": "The Truth",
+      "description": "The drive is encrypted, but the safehouse radio can transmit it for decoding. Keep the radio running and hold on through another night.",
+      "requires": ["the_facility"],
+      "objectives": [
+        {"type": "interact", "target": "safehouse_radio", "description": "Start the transmission at the radio"},
+        {"type": "survive_night", "target": 3, "description": "Survive night 3"}
+      ],
+      "rewards": {"xp": 500, "items": {"medkit": 3, "scrap": 30}}
+    },
+    {
+      "id": "clear_the_streets", "category": "side",
+      "title": "Clear the Streets",
+      "description": "Every creature you put down is one fewer at your door tomorrow night.",
+      "requires": ["first_light"],
+      "objectives": [
+        {"type": "defeat_enemy", "target": "any", "quantity": 15, "description": "Defeat creatures"}
+      ],
+      "rewards": {"xp": 80, "items": {"ammo_9mm": 24}}
+    },
+    {
+      "id": "scavenger", "category": "side",
+      "title": "Scavenger",
+      "description": "Workbenches run on scrap. Pick up as much as you can carry.",
+      "requires": ["first_light"],
+      "objectives": [
+        {"type": "collect_item", "target": "scrap", "quantity": 15, "description": "Collect scrap"}
+      ],
+      "rewards": {"xp": 60, "items": {"batteries": 2, "chemicals": 2}}
+    },
+    {
+      "id": "supply_run", "category": "side", "deadline_day": 3,
+      "title": "Supply Run",
+      "description": "The safehouse needs stocking, and the offer expires. Finish it before the end of day 3.",
+      "requires": ["first_light"],
+      "objectives": [
+        {"type": "search_containers", "quantity": 6, "description": "Search crates"}
+      ],
+      "rewards": {"xp": 100, "items": {"medkit": 1}}
+    }
+  ]
+}

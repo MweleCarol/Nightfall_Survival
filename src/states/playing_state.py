@@ -1,4 +1,4 @@
-"""The in-game state: world, player, combat, waves, loot, progression, HUD."""
+"""The in-game state: world, player, combat, waves, loot, progression, story, HUD."""
 from __future__ import annotations
 
 import random
@@ -17,13 +17,21 @@ from src.player.player import Player
 from src.services.data_loader import DataLoadError
 from src.systems.crafting import CraftingSystem, load_crafting_data
 from src.systems.loot_system import LootSystem, load_loot_tables
+from src.systems.mission_system import (
+    MissionManager, MissionStatus, load_missions, validate_references,
+)
 from src.systems.progression import Progression
 from src.systems.skills import SkillSet, load_skill_defs
+from src.systems.story import StoryState, load_story_data
 from src.systems.wave_manager import WaveManager, load_wave_config
 from src.ui.combat_hud import CombatHUD
 from src.ui.hud import HUD
 from src.ui.inventory_ui import InventoryUI
+from src.ui.mission_hud import MissionHUD
+from src.ui.mission_ui import MissionUI
 from src.ui.progression_hud import ProgressionHUD
+from src.ui.radio_ui import RadioUI
+from src.ui.reader_ui import ReaderUI
 from src.ui.skills_ui import SkillsUI
 from src.ui.survival_hud import SurvivalHUD
 from src.ui.workshop_ui import WorkshopUI
@@ -32,13 +40,25 @@ from src.world.day_night import DayNightCycle
 from src.world.lighting import Lighting
 from src.world.loot_objects import LootContainer, Pickup
 from src.world.map import GameMap
+from src.world.story_world import StoryObject, load_story_world
 
 # Keys that close each overlay screen.
 OVERLAY_CLOSE_KEYS = {
     "inventory": (pygame.K_TAB, pygame.K_ESCAPE),
     "skills": (pygame.K_k, pygame.K_ESCAPE),
     "workshop": (pygame.K_e, pygame.K_ESCAPE),
+    "journal": (pygame.K_m, pygame.K_ESCAPE),
+    "board": (pygame.K_e, pygame.K_ESCAPE),
+    "radio": (pygame.K_e, pygame.K_ESCAPE),
+    "reader": (pygame.K_e, pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE),
 }
+
+# Game events that missions and the story react to (forwarded by _route).
+ROUTED_EVENTS = (
+    "GAME_STARTED", "LOCATION_REACHED", "ITEM_COLLECTED", "ENEMY_DIED", "WAVE_COMPLETED",
+    "NIGHT_STARTED", "NIGHT_COMPLETED", "DAY_STARTED", "OBJECT_INTERACTED",
+    "CONTAINER_SEARCHED", "MISSION_STARTED", "MISSION_COMPLETED",
+)
 
 
 class PlayingState(GameState):
@@ -72,17 +92,6 @@ class PlayingState(GameState):
         self.skills = SkillSet(load_skill_defs())
         self.crafting = CraftingSystem(load_crafting_data(self.item_defs), self.inventory, self.rng)
 
-        # UI
-        self.hud = HUD()
-        self.combat_hud = CombatHUD()
-        self.survival_hud = SurvivalHUD()
-        self.progression_hud = ProgressionHUD()
-        self.inventory_ui = InventoryUI()
-        self.skills_ui = SkillsUI(self.skills, self.progression)
-        self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills)
-        self.active_overlay: str | None = None
-        self.debug_font = pygame.font.SysFont("arial", 16, bold=True)
-
         # Combat, enemies, waves, loot
         self.combat = CombatSystem(event_bus=self.game.event_bus)
         self.enemy_factory = EnemyFactory()
@@ -94,6 +103,37 @@ class PlayingState(GameState):
         self.loot = LootSystem(load_loot_tables(self.item_defs), self.rng)
         self.containers = [LootContainer(p.id, p.pos, p.category) for p in self.map.loot_points]
         self.pickups: list[Pickup] = []
+
+        # Story world, missions and story state
+        self.story_world = load_story_world(self.item_defs)
+        missions = load_missions(self.item_defs)
+        problems = validate_references(
+            missions,
+            {location.id for location in self.story_world.locations},
+            {obj.id for obj in self.story_world.objects} | {i.id for i in self.map.interactables},
+            set(self.enemy_factory.definitions))
+        if problems:
+            raise DataLoadError("Mission data problems:\n  " + "\n  ".join(problems))
+        self.mission_manager = MissionManager(missions, self.game.event_bus)
+        self.story = StoryState(load_story_data(), self.game.event_bus)
+        self.inside_locations: set[str] = set()
+        self.discovered_locations: set[str] = set()
+        self._known_available = {m.id for m in self.mission_manager.available()}
+
+        # UI
+        self.hud = HUD()
+        self.combat_hud = CombatHUD()
+        self.survival_hud = SurvivalHUD()
+        self.progression_hud = ProgressionHUD()
+        self.mission_hud = MissionHUD()
+        self.inventory_ui = InventoryUI()
+        self.skills_ui = SkillsUI(self.skills, self.progression)
+        self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills)
+        self.mission_ui = MissionUI(self.mission_manager, self.story, self.item_defs)
+        self.radio_ui = RadioUI(self.story)
+        self.reader_ui = ReaderUI()
+        self.active_overlay: str | None = None
+        self.debug_font = pygame.font.SysFont("arial", 16, bold=True)
 
         self.debug = False
         self.interaction: tuple[str, object, str] | None = None
@@ -114,15 +154,24 @@ class PlayingState(GameState):
             ("WAVE_COMPLETED", self._on_wave_completed),
             ("NIGHT_CLEARED", self._on_night_cleared),
             ("LEVEL_UP", self._on_level_up),
+            ("MISSION_STARTED", self._on_mission_started),
+            ("MISSION_COMPLETED", self._on_mission_completed),
+            ("MISSION_FAILED", self._on_mission_failed),
+            ("RADIO_MESSAGE", self._on_radio_message),
+            ("CHAPTER_UNLOCKED", self._on_chapter_unlocked),
         ]
-        for event, handler in self._subscriptions:
-            self.game.event_bus.on(event, handler)
+        for event_name in ROUTED_EVENTS:
+            self._subscriptions.append((event_name, self._make_router(event_name)))
+        for event_name, handler in self._subscriptions:
+            self.game.event_bus.on(event_name, handler)
+
         pygame.mouse.set_visible(False)          # we draw our own crosshair
         self.hud.notify("DAY 1 - SCAVENGE WHILE YOU CAN")
+        self.game.event_bus.emit("GAME_STARTED", {})
 
     def exit(self) -> None:
-        for event, handler in self._subscriptions:
-            self.game.event_bus.off(event, handler)
+        for event_name, handler in self._subscriptions:
+            self.game.event_bus.off(event_name, handler)
         pygame.mouse.set_visible(True)
 
     # ---- skills: turn ranks and upgrades into real stats ----
@@ -138,6 +187,14 @@ class PlayingState(GameState):
                        + self.crafting.upgrade_bonus("reload", weapon)),
             "magazine": self.crafting.upgrade_bonus("magazine", weapon),
         }
+
+    # ---- event routing: missions and story listen to everything through here ----
+    def _make_router(self, event_name: str):
+        return lambda data, name=event_name: self._route(name, data)
+
+    def _route(self, event_name: str, data: dict) -> None:
+        self.mission_manager.notify(event_name, data)
+        self.story.notify(event_name, data)
 
     # ---- event bus handlers ----
     def _on_night_started(self, data: dict) -> None:
@@ -173,6 +230,41 @@ class PlayingState(GameState):
     def _on_level_up(self, data: dict) -> None:
         self.hud.notify(f"LEVEL UP!  LEVEL {data['level']}  -  PRESS K")
 
+    def _on_mission_started(self, data: dict) -> None:
+        title = self.mission_manager.missions[data["id"]].title.upper()
+        self.hud.notify(f"MISSION STARTED: {title}", 3.0)
+
+    def _on_mission_failed(self, data: dict) -> None:
+        title = self.mission_manager.missions[data["id"]].title.upper()
+        self.hud.notify(f"MISSION FAILED: {title}", 3.0)
+
+    def _on_mission_completed(self, data: dict) -> None:
+        mission = self.mission_manager.missions[data["id"]]
+        self.hud.notify(f"MISSION COMPLETE: {mission.title.upper()}", 3.5)
+        rewards = mission.rewards
+        parts: list[str] = []
+        if rewards.xp:
+            parts.append(f"{rewards.xp} XP")
+            self.progression.add_xp(rewards.xp)
+        for item_id, quantity in rewards.items.items():
+            self._grant_item(item_id, quantity, self.player.position, announce=False, collected=False)
+            parts.append(f"{quantity} {self.item_defs[item_id].name}")
+        if parts:
+            self.hud.notify("REWARDS: " + ", ".join(parts), 3.5)
+        if rewards.unlock_chapter is not None:
+            self.story.unlock_chapter(rewards.unlock_chapter)
+
+        available = {m.id for m in self.mission_manager.available()}
+        if available - self._known_available:
+            self.hud.notify("NEW MISSIONS AT THE MISSION BOARD", 3.0)
+        self._known_available |= available
+
+    def _on_radio_message(self, data: dict) -> None:
+        self.hud.notify("INCOMING TRANSMISSION - USE THE SAFEHOUSE RADIO", 3.0)
+
+    def _on_chapter_unlocked(self, data: dict) -> None:
+        self.hud.notify(f"CHAPTER {data['chapter']} - {data['title'].upper()}", 4.0)
+
     # ---- input ----
     def handle_event(self, event: pygame.event.Event) -> None:
         if self.active_overlay is not None:
@@ -193,6 +285,8 @@ class PlayingState(GameState):
             self._open_overlay("inventory")
         elif key == pygame.K_k:
             self._open_overlay("skills")
+        elif key == pygame.K_m:
+            self._open_overlay("journal")
         elif key == pygame.K_e:
             self._interact()
         elif key == pygame.K_q:
@@ -208,6 +302,12 @@ class PlayingState(GameState):
             self.cycle.skip_to_next_phase()
         elif key == pygame.K_x:      # DEBUG ONLY: +100 XP
             self.progression.add_xp(100)
+        elif key == pygame.K_y:      # DEBUG ONLY: complete the first active mission
+            active = self.mission_manager.active()
+            if active:
+                self.mission_manager.force_complete(active[0].id)
+            else:
+                self.hud.notify("DEBUG: no active mission", 1.5)
         elif key == pygame.K_g:      # DEBUG ONLY: free crafting materials
             for item_id, quantity in (("scrap", 20), ("chemicals", 10), ("medical_supplies", 10),
                                       ("weapon_parts", 6), ("batteries", 4)):
@@ -226,6 +326,8 @@ class PlayingState(GameState):
             self.inventory_ui.selected = 0
         elif name == "skills":
             self.skills_ui.reset()
+        elif name == "journal":
+            self.mission_ui.open(board_mode=False)
 
     def _handle_overlay_event(self, event: pygame.event.Event) -> None:
         if event.type != pygame.KEYDOWN:
@@ -234,13 +336,18 @@ class PlayingState(GameState):
         if event.key in OVERLAY_CLOSE_KEYS[name]:
             self.active_overlay = None
             return
+        message = None
         if name == "inventory":
             message = self.inventory_ui.handle_event(event, self.player)
         elif name == "skills":
             message = self.skills_ui.handle_event(event)
-        else:
+        elif name == "workshop":
             message = self.workshop_ui.handle_event(event)
-        if name != "inventory":
+        elif name in ("journal", "board"):
+            message = self.mission_ui.handle_event(event)
+        elif name == "radio":
+            message = self.radio_ui.handle_event(event)
+        if name in ("skills", "workshop"):
             self._apply_skill_effects()          # ranks or weapon upgrades may have changed
         if message:
             self.hud.notify(message, 2.0)
@@ -270,6 +377,7 @@ class PlayingState(GameState):
         self._update_waves(dt)
         self._update_enemies(dt)
         self._update_pickups(dt)
+        self._update_locations()
 
         self.interaction = self._find_interaction()
         self._check_player_death(dt)       # keep last: it may switch state
@@ -316,12 +424,27 @@ class PlayingState(GameState):
                 if added:
                     pickup.quantity -= added
                     self.hud.notify(f"+{added} {pickup.label}", 1.6)
+                    self.game.event_bus.emit("ITEM_COLLECTED",
+                                             {"item": pickup.item_id, "quantity": added})
                 elif self.full_notice_timer <= 0:
                     self.hud.notify("INVENTORY FULL", 1.6)
                     self.full_notice_timer = settings.FULL_NOTICE_COOLDOWN
             if pickup.quantity > 0:
                 remaining.append(pickup)
         self.pickups = remaining
+
+    def _update_locations(self) -> None:
+        for location in self.story_world.locations:
+            inside = location.rect.colliderect(self.player.rect)
+            if inside and location.id not in self.inside_locations:
+                self.inside_locations.add(location.id)
+                if location.id not in self.discovered_locations:
+                    self.discovered_locations.add(location.id)
+                    self.hud.notify(f"DISCOVERED: {location.name.upper()}", 2.5)
+                    self.progression.add_xp(settings.XP_LOCATION_DISCOVERY)
+                self.game.event_bus.emit("LOCATION_REACHED", {"location": location.id})
+            elif not inside:
+                self.inside_locations.discard(location.id)
 
     def _check_player_death(self, dt: float) -> None:
         if not self.player.stats.is_dead:
@@ -337,19 +460,44 @@ class PlayingState(GameState):
             self.game.state_manager.change_state(
                 GameOverState(self.game, self.cycle.day_number, self.kills))
 
-    # ---- interaction, looting, healing ----
+    # ---- interaction, looting, story objects, healing ----
+    def _object_available(self, obj: StoryObject) -> bool:
+        if obj.used:
+            return False
+        definition = obj.definition
+        if definition.mission is not None:
+            if self.mission_manager.status.get(definition.mission) is not MissionStatus.ACTIVE:
+                return False
+        if definition.after is not None:
+            required = self.story_world.object_by_id(definition.after)
+            if required is None or not required.used:
+                return False
+        return True
+
     def _find_interaction(self) -> tuple[str, object, str] | None:
         if self.player.stats.is_dead:
             return None
-        best, best_distance = None, settings.CONTAINER_INTERACT_RANGE
+        position = self.player.position
+
+        best_container, best_distance = None, settings.CONTAINER_INTERACT_RANGE
         for container in self.containers:
             if container.opened:
                 continue
-            distance = self.player.position.distance_to(container.position)
+            distance = position.distance_to(container.position)
             if distance <= best_distance:
-                best, best_distance = container, distance
-        if best is not None:
-            return ("container", best, "Press E to search")
+                best_container, best_distance = container, distance
+        if best_container is not None:
+            return ("container", best_container, "Press E to search")
+
+        best_object, best_distance = None, settings.STORY_OBJECT_RANGE
+        for obj in self.story_world.objects:
+            if not self._object_available(obj):
+                continue
+            distance = position.distance_to(obj.position)
+            if distance <= best_distance:
+                best_object, best_distance = obj, distance
+        if best_object is not None:
+            return ("object", best_object, best_object.definition.prompt)
 
         zone = self.map.interactable_at(self.player.rect)
         if zone is not None:
@@ -366,27 +514,69 @@ class PlayingState(GameState):
         kind, target, _prompt = self.interaction
         if kind == "container":
             self._search_container(target)
+        elif kind == "object":
+            self._use_story_object(target)
         elif kind == "rest":
             self.cycle.skip_to_next_phase()
         elif kind == "station":
-            self.workshop_ui.open_tab("craft" if target.kind == "workbench" else "weapon")
+            self._open_station(target.kind)
+
+    def _open_station(self, station_kind: str) -> None:
+        if station_kind in ("workbench", "weapon_station"):
+            self.workshop_ui.open_tab("craft" if station_kind == "workbench" else "weapon")
             self.active_overlay = "workshop"
+        elif station_kind == "missions":
+            self.mission_ui.open(board_mode=True)
+            self.active_overlay = "board"
+        elif station_kind == "radio":
+            self.radio_ui.open()
+            self.active_overlay = "radio"
+            self.game.event_bus.emit("OBJECT_INTERACTED", {"id": "safehouse_radio"})
+
+    def _use_story_object(self, obj: StoryObject) -> None:
+        definition = obj.definition
+        if definition.kind == "item":
+            if self.inventory.can_add(definition.give_item, definition.quantity) < definition.quantity:
+                self.hud.notify("INVENTORY FULL - MAKE ROOM FIRST", 2.5)
+                return                           # nothing is used up, so try again later
+            self._grant_item(definition.give_item, definition.quantity, obj.position)
+        obj.used = True
+        if definition.kind == "note":
+            note = self.story.data.notes[definition.id]
+            if self.story.add_note(definition.id):
+                self.hud.notify("NOTE ADDED TO JOURNAL", 2.0)
+            self.reader_ui.show(note.title, note.text)
+            self.active_overlay = "reader"
+        elif definition.kind == "device":
+            self.hud.notify(definition.message or definition.name, 2.5)
+        self.game.event_bus.emit("OBJECT_INTERACTED", {"id": definition.id})
 
     def _search_container(self, container: LootContainer) -> None:
         container.opened = True
         self.progression.add_xp(settings.XP_CONTAINER_SEARCH)
+        self.game.event_bus.emit("CONTAINER_SEARCHED",
+                                 {"id": container.id, "category": container.category})
         drops = self.loot.roll(container.category, self.skills.bonus("loot_luck"))
         if not drops:
             self.hud.notify("Nothing useful here", 2.0)
             return
         for item_id, quantity in drops:
-            name = self.item_defs[item_id].name
-            added = self.inventory.add(item_id, quantity)
-            if added:
-                self.hud.notify(f"+{added} {name}", 2.0)
-            if added < quantity:                 # what doesn't fit lands on the ground
-                self._drop_pickup(item_id, quantity - added, container.position)
-                self.hud.notify("INVENTORY FULL - ITEMS DROPPED", 2.0)
+            self._grant_item(item_id, quantity, container.position)
+
+    def _grant_item(self, item_id: str, quantity: int, origin: Vector2,
+                    announce: bool = True, collected: bool = True) -> int:
+        """Put items in the pack. What doesn't fit lands on the ground. Returns amount added."""
+        definition = self.item_defs[item_id]
+        added = self.inventory.add(item_id, quantity)
+        if added:
+            if announce:
+                self.hud.notify(f"+{added} {definition.name}", 2.0)
+            if collected:
+                self.game.event_bus.emit("ITEM_COLLECTED", {"item": item_id, "quantity": added})
+        if added < quantity:
+            self._drop_pickup(item_id, quantity - added, Vector2(origin))
+            self.hud.notify("INVENTORY FULL - ITEMS DROPPED", 2.0)
+        return added
 
     def _drop_pickup(self, item_id: str, quantity: int, origin: Vector2) -> None:
         definition = self.item_defs[item_id]
@@ -423,6 +613,11 @@ class PlayingState(GameState):
         for container in self.containers:        # culling: only draw what is near the screen
             if view.collidepoint(container.position):
                 container.draw(surface, self.camera)
+        for obj in self.story_world.objects:
+            visible = self._object_available(obj) or (obj.used and obj.definition.kind == "note")
+            if visible and view.collidepoint(obj.position):
+                close = self.player.position.distance_to(obj.position) < 120
+                obj.draw(surface, self.camera, self.debug_font, close)
         for pickup in self.pickups:
             if view.collidepoint(pickup.position):
                 close = self.player.position.distance_to(pickup.position) < 90
@@ -438,6 +633,8 @@ class PlayingState(GameState):
 
         if self.debug:
             self.map.draw_debug(surface, self.camera)
+            for location in self.story_world.locations:
+                pygame.draw.rect(surface, (180, 120, 255), self.camera.apply(location.rect), 2)
             for enemy in self.enemies:
                 if view.collidepoint(enemy.position):
                     enemy.draw_debug(surface, self.camera, self.debug_font)
@@ -450,10 +647,18 @@ class PlayingState(GameState):
         self.survival_hud.draw(surface, self.wave_manager, alive, self.inventory,
                                self.cycle.is_night)
         self.progression_hud.draw(surface, self.progression)
+        self.mission_hud.draw(surface, self.mission_manager, self.story)
 
-        if self.active_overlay == "inventory":
+        overlay = self.active_overlay
+        if overlay == "inventory":
             self.inventory_ui.draw(surface, self.player)
-        elif self.active_overlay == "skills":
+        elif overlay == "skills":
             self.skills_ui.draw(surface)
-        elif self.active_overlay == "workshop":
+        elif overlay == "workshop":
             self.workshop_ui.draw(surface)
+        elif overlay in ("journal", "board"):
+            self.mission_ui.draw(surface)
+        elif overlay == "radio":
+            self.radio_ui.draw(surface)
+        elif overlay == "reader":
+            self.reader_ui.draw(surface)

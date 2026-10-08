@@ -1,0 +1,56 @@
+{
+  "chapters": [
+    {"id": 1, "title": "The Collapse",
+     "summary": "You wake up alone in an empty city. Nobody knows what happened, but the survivors agree on one thing: stay inside after dark."},
+    {"id": 2, "title": "The Signal",
+     "summary": "A looping broadcast is coming from St. Mary's Hospital. Somebody there knew what was coming and left a trail for whoever came looking."},
+    {"id": 3, "title": "The Facility",
+     "summary": "The radio points south, to a research site that officially never existed. What was done there explains the creatures, and why they keep changing."},
+    {"id": 4, "title": "The Truth",
+     "summary": "The data you recovered shows how the Collapse really started. Now the last survivors must decide who gets to hear it."}
+  ],
+
+  "radio_messages": [
+    {"id": "static", "sender": "UNKNOWN",
+     "text": "...krrsh... anyone... if you can hear this, stay off the streets after dark. They hunt by... krrsh... Find the safehouse. Search every crate while the sun is up.",
+     "trigger": {"type": "game_start"}},
+    {"id": "first_supplies", "sender": "UNKNOWN",
+     "text": "You are still alive. Good. The safehouse perimeter confuses them, but it will not stop them forever. Stock up while the sun is up, and use the workbench. Scrap and chemicals turn into medicine and ammunition.",
+     "trigger": {"type": "mission_completed", "value": "first_light"}},
+    {"id": "first_dawn", "sender": "UNKNOWN",
+     "text": "Dawn. You made it through the first night. There is a signal coming from St. Mary's Hospital, looping since the Collapse. Someone wanted it found. Go and look.",
+     "trigger": {"type": "mission_completed", "value": "survive_night_one"}},
+    {"id": "stalker_warning", "sender": "SURVIVOR NETWORK",
+     "text": "Night two. Reports say some of them are running now. If you hear something fast behind you, do not stop to aim. Keep moving, then turn and shoot.",
+     "trigger": {"type": "night_started", "value": 2}},
+    {"id": "brute_warning", "sender": "SURVIVOR NETWORK",
+     "text": "Night three. Something heavy is moving through the streets. Bullets barely slow it down. Do not let it corner you.",
+     "trigger": {"type": "night_started", "value": 3}},
+    {"id": "nurse_trail", "sender": "DR. REYES (RECORDING)",
+     "text": "If you are hearing this, the hospital's backup power failed with the rest of the city. The emergency radio in the service alley can broadcast district-wide. Restart the generator first, then take the radio.",
+     "trigger": {"type": "mission_completed", "value": "follow_the_signal"}},
+    {"id": "radio_online", "sender": "DR. REYES",
+     "text": "Radio online. I am alive, barely. There was a research facility south of the warehouse district. Officially it never existed. What they did there is why the city is like this. Survive the night, then get to its gate.",
+     "trigger": {"type": "mission_completed", "value": "the_radio"}},
+    {"id": "facility_found", "sender": "SURVIVOR NETWORK",
+     "text": "You are tougher than you look. The facility went dark the day of the Collapse, but its terminals still run on battery. One of them holds the research logs.",
+     "trigger": {"type": "mission_completed", "value": "into_the_dark"}},
+    {"id": "the_drive", "sender": "DR. REYES",
+     "text": "You have the drive. It names the project: NIGHTFALL. They tried to build people who never needed sleep. It worked. Bring the drive back to the safehouse radio and let me decode it.",
+     "trigger": {"type": "mission_completed", "value": "the_facility"}},
+    {"id": "truth_out", "sender": "DR. REYES",
+     "text": "Decoded. The Collapse was not an accident, and the creatures out there are the people who volunteered. There is still a source, deep in the district, and something guards it. The old logs call it the Butcher. We will talk when you are ready.",
+     "trigger": {"type": "mission_completed", "value": "the_truth"}}
+  ],
+
+  "notes": [
+    {"id": "collapse_note", "title": "Police Report - Day 0",
+     "text": "Eleven calls in six minutes, all describing the same thing: people standing perfectly still in the street, staring at nothing, until the lights went out. By midnight nobody was answering the radio. If you find this, do not go out after dark."},
+    {"id": "survivor_note", "title": "Scratched into a Wall",
+     "text": "DAY 9. They only come at night. Sunlight burns them off. The ones with the loud steps are new. DAY 12. Ran out of bandages. Do not search the hospital alone."},
+    {"id": "nurse_note", "title": "Torn Page - Nurse's Log",
+     "text": "They brought in forty patients with the same symptoms: no sleep for days, then the screaming. Dr. Reyes says the symptoms match something she saw at the research facility south of here. She restarted nothing. The generator room is locked and the radio is in the alley. I hope somebody finds this."},
+    {"id": "lab_memo", "title": "Water-Damaged Memo",
+     "text": "TO: PROJECT NIGHTFALL STAFF. Phase two volunteers show complete loss of the sleep cycle. Subjects are stable in daylight, however post-dusk aggression exceeds all projections. Recommendation: halt. Response from the director: proceed."}
+  ]
+}

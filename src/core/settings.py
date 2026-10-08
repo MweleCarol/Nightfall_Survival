@@ -99,3 +99,11 @@ XP_PER_WAVE = 25               # multiplied by the wave number (wave 3 = 75 XP)
 XP_NIGHT_CLEARED = 75
 XP_CONTAINER_SEARCH = 3
 CRIT_MULTIPLIER = 2.0
+
+
+# --- Story, missions and locations ---
+MISSIONS_FILE = "data/missions.json"
+STORY_FILE = "data/story.json"
+MAX_ACTIVE_MISSIONS = 3
+STORY_OBJECT_RANGE = 70
+XP_LOCATION_DISCOVERY = 15

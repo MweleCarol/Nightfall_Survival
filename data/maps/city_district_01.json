@@ -52,7 +52,38 @@
     {"id": "workbench", "kind": "workbench", "rect": [1750, 1310, 150, 90],
      "prompt": "Press E to use the workbench"},
     {"id": "weapon_station", "kind": "weapon_station", "rect": [2200, 1310, 150, 90],
-     "prompt": "Press E to upgrade your weapon"}
+     "prompt": "Press E to upgrade your weapon"},
+    {"id": "mission_board", "kind": "missions", "rect": [1710, 1060, 80, 110],
+     "prompt": "Press E to open the mission board"},
+    {"id": "safehouse_radio", "kind": "radio", "rect": [2310, 1060, 80, 110],
+     "prompt": "Press E to use the radio"}
+  ],
+
+  "locations": [
+    {"id": "safehouse_door", "name": "Safehouse", "rect": [1950, 1300, 200, 70]},
+    {"id": "hospital_entrance", "name": "St. Mary's Hospital", "rect": [2050, 610, 200, 110]},
+    {"id": "hospital_service_alley", "name": "Hospital Service Alley", "rect": [2520, 300, 160, 200]},
+    {"id": "facility_gate", "name": "Research Facility Gate", "rect": [920, 2020, 160, 120]}
+  ],
+
+  "story_objects": [
+    {"id": "collapse_note", "kind": "note", "name": "Police Report", "pos": [1700, 700],
+     "prompt": "Press E to read the report"},
+    {"id": "survivor_note", "kind": "note", "name": "Scratched Message", "pos": [400, 780],
+     "prompt": "Press E to read the message"},
+    {"id": "nurse_note", "kind": "note", "name": "Torn Page", "pos": [2150, 680],
+     "prompt": "Press E to read the page", "mission": "follow_the_signal"},
+    {"id": "lab_memo", "kind": "note", "name": "Water-Damaged Memo", "pos": [3100, 1100],
+     "prompt": "Press E to read the memo"},
+    {"id": "power_generator", "kind": "device", "name": "Emergency Generator", "pos": [2600, 450],
+     "prompt": "Press E to restart the generator", "mission": "the_radio",
+     "message": "The generator roars back to life."},
+    {"id": "radio_cache", "kind": "item", "name": "Radio Cache", "pos": [2600, 340],
+     "prompt": "Press E to take the radio", "mission": "the_radio", "after": "power_generator",
+     "give_item": "radio_unit", "quantity": 1},
+    {"id": "facility_terminal", "kind": "item", "name": "Facility Terminal", "pos": [1000, 2080],
+     "prompt": "Press E to copy the data drive", "mission": "the_facility",
+     "give_item": "data_drive", "quantity": 1}
   ],
 
   "loot_points": [

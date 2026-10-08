@@ -15,6 +15,10 @@
     {"id": "bandage", "name": "Bandage", "type": "consumable", "max_stack": 10, "rarity": "common",
      "heal": 15, "description": "Quick field dressing."},
     {"id": "medkit", "name": "Medkit", "type": "consumable", "max_stack": 5, "rarity": "uncommon",
-     "heal": 35, "description": "A proper first-aid kit."}
+     "heal": 35, "description": "A proper first-aid kit."},
+    {"id": "radio_unit", "name": "Emergency Radio", "type": "quest", "max_stack": 1, "rarity": "rare",
+     "description": "A sealed emergency radio taken from the hospital. Still works."},
+    {"id": "data_drive", "name": "Encrypted Data Drive", "type": "quest", "max_stack": 1, "rarity": "epic",
+     "description": "Research logs copied from the facility terminal."}
   ]
 }
