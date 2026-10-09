@@ -107,3 +107,10 @@ STORY_FILE = "data/story.json"
 MAX_ACTIVE_MISSIONS = 3
 STORY_OBJECT_RANGE = 70
 XP_LOCATION_DISCOVERY = 15
+
+
+# --- Bosses, arenas and safehouse rules ---
+BOSSES_FILE = "data/bosses.json"
+ARENAS_FILE = "data/arenas.json"
+ARENA_WARNING_MARGIN = 160       # pixels around an arena where the warning banner appears
+TRUCE_BREAK_TIME = 6.0           # seconds the safe zone stops protecting you after you shoot

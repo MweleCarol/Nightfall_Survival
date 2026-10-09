@@ -1,4 +1,4 @@
-"""The in-game state: world, player, combat, waves, loot, progression, story, HUD."""
+"""The in-game state: world, player, combat, waves, loot, progression, story, bosses, HUD."""
 from __future__ import annotations
 
 import random
@@ -10,6 +10,7 @@ from src.combat.combat_system import CombatSystem
 from src.combat.weapon import Weapon, load_weapon_defs
 from src.core import settings
 from src.core.game_state import GameState
+from src.enemies.boss import Boss, load_boss_defs
 from src.enemies.enemy import Enemy
 from src.enemies.factory import EnemyFactory
 from src.player.inventory import Inventory, load_item_defs
@@ -21,9 +22,11 @@ from src.systems.mission_system import (
     MissionManager, MissionStatus, load_missions, validate_references,
 )
 from src.systems.progression import Progression
+from src.systems.safehouse_rules import NightResult, SafeZoneRules
 from src.systems.skills import SkillSet, load_skill_defs
 from src.systems.story import StoryState, load_story_data
 from src.systems.wave_manager import WaveManager, load_wave_config
+from src.ui.boss_hud import BossHUD
 from src.ui.combat_hud import CombatHUD
 from src.ui.hud import HUD
 from src.ui.inventory_ui import InventoryUI
@@ -35,6 +38,7 @@ from src.ui.reader_ui import ReaderUI
 from src.ui.skills_ui import SkillsUI
 from src.ui.survival_hud import SurvivalHUD
 from src.ui.workshop_ui import WorkshopUI
+from src.world.arena import Arena, ArenaState, load_arenas
 from src.world.camera import Camera
 from src.world.day_night import DayNightCycle
 from src.world.lighting import Lighting
@@ -104,6 +108,16 @@ class PlayingState(GameState):
         self.containers = [LootContainer(p.id, p.pos, p.category) for p in self.map.loot_points]
         self.pickups: list[Pickup] = []
 
+        # Bosses and arenas
+        self.boss_defs = load_boss_defs(self.item_defs)
+        self.arenas = [Arena(d) for d in load_arenas(set(self.boss_defs)).values()]
+        self.boss: Boss | None = None
+        self.current_walls: list[pygame.Rect] = list(self.map.walls)
+
+        # Safehouse rules: A (shooting breaks the truce) and B (a night counts only if cleared)
+        self.safe_rules = SafeZoneRules()
+        self.night_result = NightResult()
+
         # Story world, missions and story state
         self.story_world = load_story_world(self.item_defs)
         missions = load_missions(self.item_defs)
@@ -111,7 +125,11 @@ class PlayingState(GameState):
             missions,
             {location.id for location in self.story_world.locations},
             {obj.id for obj in self.story_world.objects} | {i.id for i in self.map.interactables},
-            set(self.enemy_factory.definitions))
+            set(self.enemy_factory.definitions) | set(self.boss_defs))
+        for arena in self.arenas:
+            mission_id = arena.definition.mission
+            if mission_id is not None and mission_id not in missions:
+                problems.append(f"arena '{arena.definition.id}': unknown mission '{mission_id}'")
         if problems:
             raise DataLoadError("Mission data problems:\n  " + "\n  ".join(problems))
         self.mission_manager = MissionManager(missions, self.game.event_bus)
@@ -126,6 +144,7 @@ class PlayingState(GameState):
         self.survival_hud = SurvivalHUD()
         self.progression_hud = ProgressionHUD()
         self.mission_hud = MissionHUD()
+        self.boss_hud = BossHUD()
         self.inventory_ui = InventoryUI()
         self.skills_ui = SkillsUI(self.skills, self.progression)
         self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills)
@@ -144,6 +163,7 @@ class PlayingState(GameState):
         self.death_timer = 0.0
 
         self._apply_skill_effects()
+        self._refresh_walls()
 
         self._subscriptions = [
             ("NIGHT_STARTED", self._on_night_started),
@@ -159,6 +179,9 @@ class PlayingState(GameState):
             ("MISSION_FAILED", self._on_mission_failed),
             ("RADIO_MESSAGE", self._on_radio_message),
             ("CHAPTER_UNLOCKED", self._on_chapter_unlocked),
+            ("BOSS_PHASE_CHANGED", self._on_boss_phase_changed),
+            ("BOSS_STUNNED", self._on_boss_stunned),
+            ("BOSS_DEFEATED", self._on_boss_defeated),
         ]
         for event_name in ROUTED_EVENTS:
             self._subscriptions.append((event_name, self._make_router(event_name)))
@@ -173,6 +196,12 @@ class PlayingState(GameState):
         for event_name, handler in self._subscriptions:
             self.game.event_bus.off(event_name, handler)
         pygame.mouse.set_visible(True)
+
+    # ---- walls: the map plus any closed boss gates ----
+    def _refresh_walls(self) -> None:
+        self.current_walls = list(self.map.walls)
+        for arena in self.arenas:
+            self.current_walls.extend(arena.barriers)
 
     # ---- skills: turn ranks and upgrades into real stats ----
     def _apply_skill_effects(self) -> None:
@@ -193,11 +222,14 @@ class PlayingState(GameState):
         return lambda data, name=event_name: self._route(name, data)
 
     def _route(self, event_name: str, data: dict) -> None:
-        self.mission_manager.notify(event_name, data)
         self.story.notify(event_name, data)
+        if event_name == "NIGHT_COMPLETED" and not self.night_result.counts_as_survived:
+            return            # rule B: a night that wasn't cleared does not count for missions
+        self.mission_manager.notify(event_name, data)
 
     # ---- event bus handlers ----
     def _on_night_started(self, data: dict) -> None:
+        self.night_result.start_night()
         self.hud.notify(f"NIGHT {data['night']} BEGINS")
         self.wave_manager.start_night(data["night"])
 
@@ -206,7 +238,10 @@ class PlayingState(GameState):
         self.enemies.clear()                     # whatever survived burns away at dawn
 
     def _on_day_started(self, data: dict) -> None:
-        self.hud.notify(f"DAY {data['day']} - YOU SURVIVED")
+        if self.night_result.counts_as_survived:
+            self.hud.notify(f"DAY {data['day']} - YOU SURVIVED")
+        else:
+            self.hud.notify(f"DAY {data['day']} - THE NIGHT WAS NOT CLEARED", 3.5)
         for container in self.containers:
             container.reset()                    # the crates are restocked
 
@@ -217,6 +252,7 @@ class PlayingState(GameState):
         self.progression.add_xp(settings.XP_PER_WAVE * data["wave"])
 
     def _on_night_cleared(self, data: dict) -> None:
+        self.night_result.mark_cleared()
         self.hud.notify("NIGHT CLEARED - HOLD UNTIL DAWN")
         self.progression.add_xp(settings.XP_NIGHT_CLEARED)
 
@@ -265,6 +301,31 @@ class PlayingState(GameState):
     def _on_chapter_unlocked(self, data: dict) -> None:
         self.hud.notify(f"CHAPTER {data['chapter']} - {data['title'].upper()}", 4.0)
 
+    def _on_boss_phase_changed(self, data: dict) -> None:
+        self.hud.notify(f"{data['phase_name'].upper()}!", 2.5)
+
+    def _on_boss_stunned(self, data: dict) -> None:
+        self.hud.notify(f"{data['name'].upper()} IS STUNNED!", 1.5)
+
+    def _on_boss_defeated(self, data: dict) -> None:
+        definition = self.boss_defs[data["id"]]
+        rewards = definition.rewards
+        self.hud.notify(f"{definition.name.upper()} IS DEAD", 4.0)
+        parts: list[str] = []
+        if rewards.skill_points:
+            self.progression.skill_points += rewards.skill_points
+            parts.append(f"{rewards.skill_points} SKILL POINTS")
+        for item_id, quantity in rewards.items.items():
+            self._grant_item(item_id, quantity, self.player.position, announce=False, collected=False)
+            parts.append(f"{quantity} {self.item_defs[item_id].name}")
+        if parts:
+            self.hud.notify("BOSS REWARDS: " + ", ".join(parts), 4.0)
+        for arena in self.arenas:
+            if arena.state is ArenaState.ACTIVE and arena.definition.boss_id == data["id"]:
+                arena.clear()                    # the gates open again
+        self._refresh_walls()
+        self.boss = None
+
     # ---- input ----
     def handle_event(self, event: pygame.event.Event) -> None:
         if self.active_overlay is not None:
@@ -302,6 +363,8 @@ class PlayingState(GameState):
             self.cycle.skip_to_next_phase()
         elif key == pygame.K_x:      # DEBUG ONLY: +100 XP
             self.progression.add_xp(100)
+        elif key == pygame.K_b:      # DEBUG ONLY: jump into the boss fight
+            self._debug_start_boss()
         elif key == pygame.K_y:      # DEBUG ONLY: complete the first active mission
             active = self.mission_manager.active()
             if active:
@@ -360,7 +423,9 @@ class PlayingState(GameState):
             return                                # menus pause the game
 
         self.full_notice_timer = max(0.0, self.full_notice_timer - dt)
-        self.cycle.update(dt)
+        if self.boss is None:
+            self.cycle.update(dt)                 # time stands still during a boss fight
+        self.safe_rules.update(dt)
 
         keys = pygame.key.get_pressed()
         direction = Vector2(
@@ -369,15 +434,18 @@ class PlayingState(GameState):
         )
         sprint = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
 
-        self.player.update(dt, direction, bool(sprint), self.map.walls)
+        self.player.update(dt, direction, bool(sprint), self.current_walls)
         self.camera.update(self.player.position, dt)
         self.player.aim_at(self.camera.screen_to_world(pygame.mouse.get_pos()))
 
         self._update_combat(dt)
-        self._update_waves(dt)
+        if self.boss is None:
+            self._update_waves(dt)
         self._update_enemies(dt)
+        self._update_boss()
         self._update_pickups(dt)
         self._update_locations()
+        self._update_arenas()
 
         self.interaction = self._find_interaction()
         self._check_player_death(dt)       # keep last: it may switch state
@@ -391,26 +459,38 @@ class PlayingState(GameState):
         if trigger and not self.player.stats.is_dead:
             if weapon.loaded == 0:
                 weapon.start_reload()      # clicking on an empty gun reloads
-            else:
-                self.combat.fire_weapon(self.player.position, self.player.aim_direction,
-                                        weapon, self.enemies, self.map.walls,
-                                        crit_chance=self.skills.bonus("crit_chance"))
+                return
+            fired = self.combat.fire_weapon(
+                self.player.position, self.player.aim_direction, weapon, self.enemies,
+                self.current_walls, crit_chance=self.skills.bonus("crit_chance"))
+            # Rule A: shooting out of the safe zone breaks the truce.
+            if fired and self.safe_rules.on_shot_fired(self.map.in_safe_zone(self.player.rect)):
+                self.hud.notify("TRUCE BROKEN - THEY KNOW WHERE YOU ARE", 2.5)
+                self.game.event_bus.emit("TRUCE_BROKEN", {})
 
     def _update_waves(self, dt: float) -> None:
         alive = sum(1 for enemy in self.enemies if not enemy.is_dead)
         self.enemies.extend(self.wave_manager.update(dt, alive))
 
     def _update_enemies(self, dt: float) -> None:
-        # Enemies ignore a dead player and a player inside the safe zone.
+        # Enemies leave you alone only while the safe zone really protects you (rule A).
+        in_zone = self.map.in_safe_zone(self.player.rect)
         targetable = (not self.player.stats.is_dead
-                      and not self.map.in_safe_zone(self.player.rect))
+                      and not self.safe_rules.protects(in_zone))
         for enemy in self.enemies:
-            damage = enemy.update(dt, self.player.position, targetable, self.map.walls)
+            damage = enemy.update(dt, self.player.position, targetable, self.current_walls)
             if damage:
                 dealt = self.player.take_damage(damage)
                 if dealt:
                     self.game.event_bus.emit("PLAYER_DAMAGED", {"amount": dealt})
         self.enemies = [e for e in self.enemies if not e.is_removable]
+
+    def _update_boss(self) -> None:
+        boss = self.boss
+        if boss is None:
+            return
+        for name, data in boss.pop_events():      # phase changes, stuns and death
+            self.game.event_bus.emit(name, data)
 
     def _update_pickups(self, dt: float) -> None:
         remaining: list[Pickup] = []
@@ -445,6 +525,51 @@ class PlayingState(GameState):
                 self.game.event_bus.emit("LOCATION_REACHED", {"location": location.id})
             elif not inside:
                 self.inside_locations.discard(location.id)
+
+    def _mission_active(self, mission_id: str | None) -> bool:
+        return (mission_id is None
+                or self.mission_manager.status.get(mission_id) is MissionStatus.ACTIVE)
+
+    def _update_arenas(self) -> None:
+        if self.boss is not None or self.player.stats.is_dead:
+            return
+        for arena in self.arenas:
+            mission_active = self._mission_active(arena.definition.mission)
+            if arena.can_trigger(self.player.rect, mission_active, self.cycle.is_day):
+                self._start_boss_fight(arena)
+                return
+            if arena.state is ArenaState.WAITING and mission_active \
+                    and arena.is_near(self.player.rect):
+                if self.cycle.is_day and not arena.warned:
+                    arena.warned = True
+                    self.hud.notify(f"{arena.definition.name.upper()} AHEAD - GATES WILL CLOSE", 3.5)
+                elif not self.cycle.is_day and not arena.hinted:
+                    arena.hinted = True
+                    self.hud.notify("TOO DANGEROUS AFTER DARK - COME BACK AT DAWN", 3.0)
+
+    def _start_boss_fight(self, arena: Arena) -> None:
+        definition = self.boss_defs[arena.definition.boss_id]
+        arena.start()
+        self._refresh_walls()                    # the gates close
+        self.boss = Boss(definition, arena.definition.boss_spawn, self.rng)
+        self.enemies.append(self.boss)
+        self.hud.notify("THE GATES CLOSE BEHIND YOU", 3.0)
+        self.game.event_bus.emit("BOSS_STARTED", {"id": definition.id, "name": definition.name})
+
+    def _debug_start_boss(self) -> None:
+        if self.boss is not None:
+            return
+        arena = next((a for a in self.arenas if a.state is ArenaState.WAITING), None)
+        if arena is None:
+            self.hud.notify("DEBUG: no arena waiting", 1.5)
+            return
+        self.enemies.clear()
+        self.wave_manager.end_night()
+        center = Vector2(arena.definition.rect.center)
+        self.player.position = center
+        self.player.rect.center = (round(center.x), round(center.y))
+        self.camera.snap_to(self.player.position)
+        self._start_boss_fight(arena)
 
     def _check_player_death(self, dt: float) -> None:
         if not self.player.stats.is_dead:
@@ -583,7 +708,7 @@ class PlayingState(GameState):
         scatter = settings.DROP_SCATTER
         position = origin + Vector2(self.rng.uniform(-scatter, scatter),
                                     self.rng.uniform(-scatter, scatter))
-        if any(wall.collidepoint(position) for wall in self.map.walls):
+        if any(wall.collidepoint(position) for wall in self.current_walls):
             position = Vector2(origin)           # never drop an item inside a wall
         self.pickups.append(Pickup(item_id, quantity, position,
                                    settings.RARITY_COLORS[definition.rarity], definition.name))
@@ -602,7 +727,7 @@ class PlayingState(GameState):
         rect = pygame.Rect(0, 0, 32, 32)
         rect.center = (round(pos.x), round(pos.y))
         world = pygame.Rect(0, 0, self.map.width, self.map.height)
-        if world.contains(rect) and rect.collidelist(self.map.walls) == -1:
+        if world.contains(rect) and rect.collidelist(self.current_walls) == -1:
             self.enemies.append(self.enemy_factory.create("walker", (pos.x, pos.y)))
 
     # ---- drawing ----
@@ -610,6 +735,9 @@ class PlayingState(GameState):
         self.map.draw(surface, self.camera)
 
         view = self.camera.view_rect().inflate(100, 100)
+        for arena in self.arenas:                # the gates and the "boss is here" outline
+            hint = self._mission_active(arena.definition.mission) and self.cycle.is_day
+            arena.draw(surface, self.camera, hint)
         for container in self.containers:        # culling: only draw what is near the screen
             if view.collidepoint(container.position):
                 container.draw(surface, self.camera)
@@ -639,15 +767,22 @@ class PlayingState(GameState):
                 if view.collidepoint(enemy.position):
                     enemy.draw_debug(surface, self.camera, self.debug_font)
 
+        in_zone = self.map.in_safe_zone(self.player.rect)
+        protected = self.safe_rules.protects(in_zone)
         prompt = self.interaction[2] if self.interaction else None
         self.hud.draw(surface, self.player.stats, self.game.clock.get_fps(),
-                      self.cycle, prompt, self.map.in_safe_zone(self.player.rect))
+                      self.cycle, prompt, protected)
+        if in_zone and self.safe_rules.truce_broken:
+            warning = self.debug_font.render("TRUCE BROKEN", True, settings.COLOR_ACCENT)
+            surface.blit(warning, (20, 84))
         alive = sum(1 for enemy in self.enemies if not enemy.is_dead)
         self.combat_hud.draw(surface, self.player.weapon, pygame.mouse.get_pos(), alive)
         self.survival_hud.draw(surface, self.wave_manager, alive, self.inventory,
                                self.cycle.is_night)
         self.progression_hud.draw(surface, self.progression)
         self.mission_hud.draw(surface, self.mission_manager, self.story)
+        if self.boss is not None:
+            self.boss_hud.draw(surface, self.boss)
 
         overlay = self.active_overlay
         if overlay == "inventory":

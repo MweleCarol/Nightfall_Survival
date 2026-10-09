@@ -9,6 +9,7 @@ from src.systems.mission_system import load_missions, validate_references
 from src.systems.story import load_story_data
 from src.world.map import GameMap
 from src.world.story_world import load_story_world, parse_story_world
+from src.enemies.boss import load_boss_defs
 
 
 @pytest.fixture(scope="module")
@@ -35,9 +36,8 @@ def test_every_mission_reference_is_valid(content):
         content["missions"],
         {loc.id for loc in world.locations},
         {obj.id for obj in world.objects} | {item.id for item in city.interactables},
-        set(load_enemy_defs()))
+        set(load_enemy_defs()) | set(load_boss_defs(content["items"])))
     assert problems == []
-
 
 def test_unlocked_chapters_exist(content):
     for mission in content["missions"].values():

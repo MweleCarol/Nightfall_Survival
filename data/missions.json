@@ -14,11 +14,11 @@
     {
       "id": "survive_night_one", "category": "story", "chapter": 1,
       "title": "The First Night",
-      "description": "After dark the city wakes up. Hold out until dawn and thin out what comes for you. Rest at the safehouse door to bring the night on.",
+      "description": "After dark the city wakes up. Hold the line, clear every wave and make it to dawn. Hiding in the safehouse will not count. Rest at the safehouse door to bring the night on.",
       "requires": ["first_light"],
       "objectives": [
         {"type": "defeat_enemy", "target": "any", "quantity": 5, "description": "Defeat creatures"},
-        {"type": "survive_night", "target": 1, "description": "Survive until dawn"}
+        {"type": "survive_night", "target": 1, "description": "Clear every wave and reach dawn"}
       ],
       "rewards": {"xp": 120, "items": {"medkit": 1, "ammo_9mm": 24}, "unlock_chapter": 2}
     },
@@ -48,11 +48,11 @@
     {
       "id": "into_the_dark", "category": "story", "chapter": 3,
       "title": "Into the Dark",
-      "description": "The radio picked up a second signal from a research site to the south. The creatures are getting faster. Survive another night and learn how they move.",
+      "description": "The radio picked up a second signal from a research site to the south. The creatures are getting faster. Clear another night and learn how they move.",
       "requires": ["the_radio"],
       "objectives": [
         {"type": "defeat_enemy", "target": "stalker", "quantity": 3, "description": "Defeat Stalkers"},
-        {"type": "survive_night", "target": 2, "description": "Survive night 2"}
+        {"type": "survive_night", "target": 2, "description": "Clear every wave of night 2"}
       ],
       "rewards": {"xp": 200, "items": {"weapon_parts": 2, "medkit": 1}}
     },
@@ -70,13 +70,23 @@
     {
       "id": "the_truth", "category": "story", "chapter": 4,
       "title": "The Truth",
-      "description": "The drive is encrypted, but the safehouse radio can transmit it for decoding. Keep the radio running and hold on through another night.",
+      "description": "The drive is encrypted, but the safehouse radio can transmit it for decoding. Keep the radio running and clear another night.",
       "requires": ["the_facility"],
       "objectives": [
         {"type": "interact", "target": "safehouse_radio", "description": "Start the transmission at the radio"},
-        {"type": "survive_night", "target": 3, "description": "Survive night 3"}
+        {"type": "survive_night", "target": 3, "description": "Clear every wave of night 3"}
       ],
       "rewards": {"xp": 500, "items": {"medkit": 3, "scrap": 30}}
+    },
+    {
+      "id": "the_butcher", "category": "story", "chapter": 4,
+      "title": "The Butcher",
+      "description": "The logs name a guardian at the source: the Butcher. He waits in the yard west of the apartments. Go in daylight and bring everything you have. Once the gates close, only one of you leaves.",
+      "requires": ["the_truth"],
+      "objectives": [
+        {"type": "defeat_enemy", "target": "the_butcher", "description": "Defeat the Butcher"}
+      ],
+      "rewards": {"xp": 400, "items": {"scrap": 50, "medkit": 2}}
     },
     {
       "id": "clear_the_streets", "category": "side",
