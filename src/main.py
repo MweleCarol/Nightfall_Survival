@@ -1,15 +1,17 @@
-"""Entry point. Run with:  python -m src.main"""
+"""Entry point. Run from the project root with:  python -m src.main"""
 import logging
 
 from src.core.game import Game
-from src.states.boot_state import BootState
+from src.states.main_menu_state import MainMenuState
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     game = Game()
-    game.state_manager.change_state(BootState(game))
+    game.state_manager.change_state(MainMenuState(game))
     game.run()
 
 

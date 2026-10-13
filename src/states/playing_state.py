@@ -45,6 +45,7 @@ from src.world.lighting import Lighting
 from src.world.loot_objects import LootContainer, Pickup
 from src.world.map import GameMap
 from src.world.story_world import StoryObject, load_story_world
+from src.world.effects_manager import EffectsManager
 
 # Keys that close each overlay screen.
 OVERLAY_CLOSE_KEYS = {
@@ -139,8 +140,10 @@ class PlayingState(GameState):
         self._known_available = {m.id for m in self.mission_manager.available()}
 
         # UI
-        self.hud = HUD()
-        self.combat_hud = CombatHUD()
+        self.hud = HUD(self.game.assets)
+        self.combat_hud = CombatHUD(self.game.assets)
+        self.effects = EffectsManager(self.game.event_bus, settings.SCREEN_WIDTH,
+                                      settings.SCREEN_HEIGHT)
         self.survival_hud = SurvivalHUD()
         self.progression_hud = ProgressionHUD()
         self.mission_hud = MissionHUD()
@@ -195,8 +198,8 @@ class PlayingState(GameState):
     def exit(self) -> None:
         for event_name, handler in self._subscriptions:
             self.game.event_bus.off(event_name, handler)
+        self.effects.close()
         pygame.mouse.set_visible(True)
-
     # ---- walls: the map plus any closed boss gates ----
     def _refresh_walls(self) -> None:
         self.current_walls = list(self.map.walls)
@@ -340,8 +343,8 @@ class PlayingState(GameState):
 
         key = event.key
         if key == pygame.K_ESCAPE:
-            from src.states.boot_state import BootState  # avoid circular import
-            self.game.state_manager.change_state(BootState(self.game))
+            from src.states.paused_state import PausedState  # avoid circular import
+            self.game.state_manager.push_state(PausedState(self.game))
         elif key == pygame.K_TAB:
             self._open_overlay("inventory")
         elif key == pygame.K_k:
@@ -426,6 +429,9 @@ class PlayingState(GameState):
         if self.boss is None:
             self.cycle.update(dt)                 # time stands still during a boss fight
         self.safe_rules.update(dt)
+        stats = self.player.stats
+        self.effects.update(dt, self.player.position, self.cycle.darkness,
+                            stats.health / stats.max_health)
 
         keys = pygame.key.get_pressed()
         direction = Vector2(
@@ -732,6 +738,7 @@ class PlayingState(GameState):
 
     # ---- drawing ----
     def render(self, surface: pygame.Surface) -> None:
+        self.effects.begin_world(self.camera)     # the camera shakes while the world is drawn
         self.map.draw(surface, self.camera)
 
         view = self.camera.view_rect().inflate(100, 100)
@@ -758,6 +765,8 @@ class PlayingState(GameState):
         self.lighting.render(surface, self.camera, self.cycle.darkness,
                              self.map.street_lights, self.player.position)
         self.combat.draw(surface, self.camera)   # after lighting: flashes glow in the dark
+        self.effects.draw_world(surface, self.camera)    # sparks and blood glow in the dark too
+        self.effects.draw_weather(surface)               # fog, rain and lightning
 
         if self.debug:
             self.map.draw_debug(surface, self.camera)
@@ -766,6 +775,8 @@ class PlayingState(GameState):
             for enemy in self.enemies:
                 if view.collidepoint(enemy.position):
                     enemy.draw_debug(surface, self.camera, self.debug_font)
+        self.effects.end_world(self.camera)              # the camera is steady again
+        self.effects.draw_overlay(surface)               # vignette and damage flash
 
         in_zone = self.map.in_safe_zone(self.player.rect)
         protected = self.safe_rules.protects(in_zone)
@@ -774,7 +785,7 @@ class PlayingState(GameState):
                       self.cycle, prompt, protected)
         if in_zone and self.safe_rules.truce_broken:
             warning = self.debug_font.render("TRUCE BROKEN", True, settings.COLOR_ACCENT)
-            surface.blit(warning, (20, 84))
+            surface.blit(warning, (20, 88))
         alive = sum(1 for enemy in self.enemies if not enemy.is_dead)
         self.combat_hud.draw(surface, self.player.weapon, pygame.mouse.get_pos(), alive)
         self.survival_hud.draw(surface, self.wave_manager, alive, self.inventory,

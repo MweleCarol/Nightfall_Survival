@@ -42,7 +42,11 @@ class CombatSystem:
     def fire_weapon(self, origin: Vector2, aim_direction: Vector2, weapon: Weapon,
                     enemies: Sequence[Enemy], walls: Sequence[pygame.Rect],
                     crit_chance: float = 0.0) -> bool:
-        """Try to fire. Returns True if a shot was actually fired."""
+        """Try to fire. Returns True if a shot was actually fired.
+
+        Events: SHOT_FIRED (muzzle position and direction), ENEMY_HIT (where and how hard),
+        SHOT_IMPACT (a bullet stopped by a wall), ENEMY_DIED.
+        """
         if not weapon.fire():
             return False
 
@@ -52,24 +56,31 @@ class CombatSystem:
 
         end = origin + direction * hit.distance
         muzzle = origin + direction * settings.MUZZLE_OFFSET
+        heading = (direction.x, direction.y)
         critical = False
+
+        self._emit("SHOT_FIRED", {"weapon": definition.id, "origin": (muzzle.x, muzzle.y),
+                                  "direction": heading})
 
         if hit.enemy is not None:
             critical = crit_chance > 0 and self.rng.random() < crit_chance
             damage = calculate_damage(weapon.damage, critical=critical,
                                       critical_multiplier=settings.CRIT_MULTIPLIER)
             killed = hit.enemy.take_damage(damage)
-            self._emit("ENEMY_HIT", {"damage": damage, "critical": critical})
+            self._emit("ENEMY_HIT", {"damage": damage, "critical": critical,
+                                     "enemy_id": hit.enemy.definition.id,
+                                     "position": (end.x, end.y), "direction": heading})
             if killed:
                 self._emit("ENEMY_DIED", {
                     "enemy_id": hit.enemy.definition.id,
                     "xp": hit.enemy.xp_reward,
                     "position": (hit.enemy.position.x, hit.enemy.position.y),
                 })
+        elif hit.distance < definition.range - 1e-6:           # something solid stopped the bullet
+            self._emit("SHOT_IMPACT", {"position": (end.x, end.y), "direction": heading})
 
         self.tracers.append(Tracer(muzzle, end, settings.TRACER_LIFETIME,
                                    hit.enemy is not None, critical))
-        self._emit("SHOT_FIRED", {"weapon": definition.id})
         return True
 
     def draw(self, surface: pygame.Surface, camera: Camera) -> None:

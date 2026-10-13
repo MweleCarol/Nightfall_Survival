@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 class GameState(ABC):
     """One screen/mode of the game: menu, playing, paused, etc."""
 
+    # A transparent state is drawn on top of the state below it (e.g. the pause menu).
+    transparent = False
+
     def __init__(self, game: Game) -> None:
         self.game = game
 

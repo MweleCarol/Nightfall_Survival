@@ -25,8 +25,8 @@ class GameOverState(GameState):
             from src.states.playing_state import PlayingState  # avoid circular import
             self.game.state_manager.change_state(PlayingState(self.game))
         elif event.key == pygame.K_ESCAPE:
-            from src.states.boot_state import BootState
-            self.game.state_manager.change_state(BootState(self.game))
+            from src.states.main_menu_state import MainMenuState
+            self.game.state_manager.change_state(MainMenuState(self.game))
 
     def update(self, dt: float) -> None:
         pass
@@ -39,6 +39,6 @@ class GameOverState(GameState):
                                   f"Enemies killed: {self.kills}")):
             text = self.font.render(line, True, settings.COLOR_TEXT)
             surface.blit(text, text.get_rect(center=(cx, cy - 10 + i * 40)))
-        hint = self.small_font.render("ENTER - try again     |     ESC - title screen",
+        hint = self.small_font.render("ENTER - try again     |     ESC - main menu",
                                       True, settings.COLOR_MUTED)
         surface.blit(hint, hint.get_rect(center=(cx, cy + 120)))
