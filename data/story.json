@@ -5,7 +5,7 @@
     {"id": 2, "title": "The Signal",
      "summary": "A looping broadcast is coming from St. Mary's Hospital. Somebody there knew what was coming and left a trail for whoever came looking."},
     {"id": 3, "title": "The Facility",
-     "summary": "The radio points south, to a research site that officially never existed. What was done there explains the creatures, and why they keep changing."},
+     "summary": "The radio points south, to a research site that officially never existed. What was done there explains the zombies, and why they keep changing."},
     {"id": 4, "title": "The Truth",
      "summary": "The data you recovered shows how the Collapse really started. Now the last survivors must decide who gets to hear it."}
   ],
@@ -39,7 +39,7 @@
      "text": "You have the drive. It names the project: NIGHTFALL. They tried to build people who never needed sleep. It worked. Bring the drive back to the safehouse radio and let me decode it.",
      "trigger": {"type": "mission_completed", "value": "the_facility"}},
     {"id": "truth_out", "sender": "DR. REYES",
-     "text": "Decoded. The Collapse was not an accident, and the creatures out there are the people who volunteered. There is still a source, deep in the district, and something guards it. The old logs call it the Butcher. We will talk when you are ready.",
+     "text": "Decoded. The Collapse was not an accident, and the zombies out there are the people who volunteered. There is still a source, deep in the district, and something guards it. The old logs call it the Butcher. We will talk when you are ready.",
      "trigger": {"type": "mission_completed", "value": "the_truth"}}
   ],
 

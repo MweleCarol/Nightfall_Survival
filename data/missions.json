@@ -17,7 +17,7 @@
       "description": "After dark the city wakes up. Hold the line, clear every wave and make it to dawn. Hiding in the safehouse will not count. Rest at the safehouse door to bring the night on.",
       "requires": ["first_light"],
       "objectives": [
-        {"type": "defeat_enemy", "target": "any", "quantity": 5, "description": "Defeat creatures"},
+        {"type": "defeat_enemy", "target": "any", "quantity": 5, "description": "Defeat zombies"},
         {"type": "survive_night", "target": 1, "description": "Clear every wave and reach dawn"}
       ],
       "rewards": {"xp": 120, "items": {"medkit": 1, "ammo_9mm": 24}, "unlock_chapter": 2}
@@ -48,7 +48,7 @@
     {
       "id": "into_the_dark", "category": "story", "chapter": 3,
       "title": "Into the Dark",
-      "description": "The radio picked up a second signal from a research site to the south. The creatures are getting faster. Clear another night and learn how they move.",
+      "description": "The radio picked up a second signal from a research site to the south. The zombies are getting faster. Clear another night and learn how they move.",
       "requires": ["the_radio"],
       "objectives": [
         {"type": "defeat_enemy", "target": "stalker", "quantity": 3, "description": "Defeat Stalkers"},
@@ -91,10 +91,10 @@
     {
       "id": "clear_the_streets", "category": "side",
       "title": "Clear the Streets",
-      "description": "Every creature you put down is one fewer at your door tomorrow night.",
+      "description": "Every zombie you put down is one fewer at your door tomorrow night.",
       "requires": ["first_light"],
       "objectives": [
-        {"type": "defeat_enemy", "target": "any", "quantity": 15, "description": "Defeat creatures"}
+        {"type": "defeat_enemy", "target": "any", "quantity": 15, "description": "Defeat zombies"}
       ],
       "rewards": {"xp": 80, "items": {"ammo_9mm": 24}}
     },

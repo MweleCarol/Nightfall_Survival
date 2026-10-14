@@ -38,6 +38,8 @@ from src.ui.reader_ui import ReaderUI
 from src.ui.skills_ui import SkillsUI
 from src.ui.survival_hud import SurvivalHUD
 from src.ui.workshop_ui import WorkshopUI
+from src.ui.game_hud import GameHUD, HudState
+from src.ui.objective_markers import build_marker_sources, next_marker
 from src.world.arena import Arena, ArenaState, load_arenas
 from src.world.camera import Camera
 from src.world.day_night import DayNightCycle
@@ -138,9 +140,12 @@ class PlayingState(GameState):
         self.inside_locations: set[str] = set()
         self.discovered_locations: set[str] = set()
         self._known_available = {m.id for m in self.mission_manager.available()}
+        self.marker_sources = build_marker_sources(
+            self.story_world.locations, self.story_world.objects, self.map.interactables,
+            [arena.definition for arena in self.arenas])
 
         # UI
-        self.hud = HUD(self.game.assets)
+        self.hud = GameHUD(self.game.assets, self.map)
         self.combat_hud = CombatHUD(self.game.assets)
         self.effects = EffectsManager(self.game.event_bus, settings.SCREEN_WIDTH,
                                       settings.SCREEN_HEIGHT)
@@ -299,7 +304,8 @@ class PlayingState(GameState):
         self._known_available |= available
 
     def _on_radio_message(self, data: dict) -> None:
-        self.hud.notify("INCOMING TRANSMISSION - USE THE SAFEHOUSE RADIO", 3.0)
+        message = self.story.data.messages[data["id"]]
+        self.hud.show_radio(message.sender, message.text)
 
     def _on_chapter_unlocked(self, data: dict) -> None:
         self.hud.notify(f"CHAPTER {data['chapter']} - {data['title'].upper()}", 4.0)
@@ -736,6 +742,66 @@ class PlayingState(GameState):
         if world.contains(rect) and rect.collidelist(self.current_walls) == -1:
             self.enemies.append(self.enemy_factory.create("walker", (pos.x, pos.y)))
 
+    def _tracked_mission(self):
+        """The mission shown in the objective panel: the first active story mission, else any."""
+        active = self.mission_manager.active()
+        story = [m for m in active if m.category == "story"]
+        return (story or active or [None])[0]
+
+    def _hud_state(self) -> HudState:
+        import math
+        from src.systems.wave_manager import WaveState
+
+        in_zone = self.map.in_safe_zone(self.player.rect)
+        mission = self._tracked_mission()
+        objectives, marker = [], None
+        if mission is not None:
+            for index, objective in enumerate(mission.objectives):
+                done = self.mission_manager.is_objective_done(mission.id, index)
+                text = objective.description
+                if objective.quantity > 1:
+                    text += f" ({self.mission_manager.progress_of(mission.id, index)}/{objective.quantity})"
+                objectives.append((text, done))
+            marker = next_marker(
+                mission, lambda i: self.mission_manager.is_objective_done(mission.id, i),
+                self.marker_sources)
+
+        waves = self.wave_manager
+        alive = sum(1 for e in self.enemies if not e.is_dead)
+        wave_status, wave_number, wave_countdown = None, 0, 0
+        if self.cycle.is_night:
+            total = waves.config.waves_per_night
+            if waves.state is WaveState.INTERMISSION:
+                wave_status, wave_number = "countdown", min(waves.wave + 1, total)
+                wave_countdown = math.ceil(waves.seconds_until_next_wave)
+            elif waves.state in (WaveState.SPAWNING, WaveState.ACTIVE):
+                wave_status, wave_number = "fighting", waves.wave
+            elif waves.state is WaveState.COMPLETE:
+                wave_status, wave_number = "cleared", total
+
+        healing = sorted((d for d in self.item_defs.values() if d.type == "consumable" and d.heal > 0),
+                         key=lambda d: -d.heal)
+        return HudState(
+            stats=self.player.stats, weapon=self.player.weapon, camera=self.camera,
+            level=self.progression.level, xp=self.progression.xp,
+            xp_needed=0 if self.progression.is_max_level else self.progression.xp_required(),
+            cycle_label=self.cycle.label, clock_text=self.cycle.clock_text(),
+            is_day=self.cycle.is_day, night=self.cycle.day_number,
+            night_remaining=0.0 if self.cycle.is_day
+            else max(0.0, self.cycle.night_duration - self.cycle.elapsed),
+            fps=self.game.clock.get_fps(), mouse_pos=pygame.mouse.get_pos(),
+            player_position=self.player.position, aim_direction=self.player.aim_direction,
+            enemies=self.enemies, crates=[c.position for c in self.containers if not c.opened],
+            objective_marker=marker, mission_title=mission.title if mission else None,
+            objectives=objectives, wave_status=wave_status, wave_number=wave_number,
+            wave_total=waves.config.waves_per_night,
+            wave_remaining=alive + waves.remaining_to_spawn, wave_countdown=wave_countdown,
+            prompt=self.interaction[2] if self.interaction else None,
+            protected=self.safe_rules.protects(in_zone),
+            truce_broken=in_zone and self.safe_rules.truce_broken,
+            quick_items=[(d.id, d.type, self.inventory.count(d.id)) for d in healing],
+            unread_radio=self.story.unread_count)
+    
     # ---- drawing ----
     def render(self, surface: pygame.Surface) -> None:
         self.effects.begin_world(self.camera)     # the camera shakes while the world is drawn
@@ -778,20 +844,7 @@ class PlayingState(GameState):
         self.effects.end_world(self.camera)              # the camera is steady again
         self.effects.draw_overlay(surface)               # vignette and damage flash
 
-        in_zone = self.map.in_safe_zone(self.player.rect)
-        protected = self.safe_rules.protects(in_zone)
-        prompt = self.interaction[2] if self.interaction else None
-        self.hud.draw(surface, self.player.stats, self.game.clock.get_fps(),
-                      self.cycle, prompt, protected)
-        if in_zone and self.safe_rules.truce_broken:
-            warning = self.debug_font.render("TRUCE BROKEN", True, settings.COLOR_ACCENT)
-            surface.blit(warning, (20, 88))
-        alive = sum(1 for enemy in self.enemies if not enemy.is_dead)
-        self.combat_hud.draw(surface, self.player.weapon, pygame.mouse.get_pos(), alive)
-        self.survival_hud.draw(surface, self.wave_manager, alive, self.inventory,
-                               self.cycle.is_night)
-        self.progression_hud.draw(surface, self.progression)
-        self.mission_hud.draw(surface, self.mission_manager, self.story)
+        self.hud.draw(surface, self._hud_state())
         if self.boss is not None:
             self.boss_hud.draw(surface, self.boss)
 
