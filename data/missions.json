@@ -31,7 +31,7 @@
         {"type": "reach_location", "target": "hospital_entrance", "description": "Reach St. Mary's Hospital"},
         {"type": "interact", "target": "nurse_note", "description": "Read the page at the entrance"}
       ],
-      "rewards": {"xp": 100, "items": {"bandage": 2, "chemicals": 2}}
+      "rewards": {"xp": 100, "items": {"bandage": 2, "chemicals": 2, "hiking_pack": 1}}
     },
     {
       "id": "the_radio", "category": "story", "chapter": 2,
@@ -65,7 +65,7 @@
         {"type": "reach_location", "target": "facility_gate", "description": "Reach the facility gate"},
         {"type": "collect_item", "target": "data_drive", "description": "Copy the facility data drive"}
       ],
-      "rewards": {"xp": 300, "items": {"ammo_9mm": 36}, "unlock_chapter": 4}
+      "rewards": {"xp": 300, "items": {"ammo_9mm": 36, "tactical_vest": 1}, "unlock_chapter": 4}
     },
     {
       "id": "the_truth", "category": "story", "chapter": 4,
@@ -76,7 +76,7 @@
         {"type": "interact", "target": "safehouse_radio", "description": "Start the transmission at the radio"},
         {"type": "survive_night", "target": 3, "description": "Clear every wave of night 3"}
       ],
-      "rewards": {"xp": 500, "items": {"medkit": 3, "scrap": 30}}
+      "rewards": {"xp": 500, "items": {"medkit": 3, "scrap": 30, "tactical_pack": 1}}
     },
     {
       "id": "the_butcher", "category": "story", "chapter": 4,
@@ -96,7 +96,7 @@
       "objectives": [
         {"type": "defeat_enemy", "target": "any", "quantity": 15, "description": "Defeat zombies"}
       ],
-      "rewards": {"xp": 80, "items": {"ammo_9mm": 24}}
+      "rewards": {"xp": 80, "items": {"ammo_9mm": 24, "dog_tags": 1}}
     },
     {
       "id": "scavenger", "category": "side",

@@ -48,6 +48,7 @@ from src.world.loot_objects import LootContainer, Pickup
 from src.world.map import GameMap
 from src.world.story_world import StoryObject, load_story_world
 from src.world.effects_manager import EffectsManager
+from src.player.equipment import Equipment, load_equipment_defs
 
 # Keys that close each overlay screen.
 OVERLAY_CLOSE_KEYS = {
@@ -75,6 +76,9 @@ class PlayingState(GameState):
 
         # Items and inventory
         self.item_defs = load_item_defs()
+        self.equipment = Equipment(load_equipment_defs(self.item_defs))
+        for item_id in settings.PLAYER_START_EQUIPMENT.values():
+            self.equipment.place(item_id)
         self.inventory = Inventory(settings.INVENTORY_CAPACITY, self.item_defs)
         for item_id, quantity in settings.PLAYER_START_ITEMS.items():
             self.inventory.add(item_id, quantity)
@@ -153,7 +157,7 @@ class PlayingState(GameState):
         self.progression_hud = ProgressionHUD()
         self.mission_hud = MissionHUD()
         self.boss_hud = BossHUD()
-        self.inventory_ui = InventoryUI()
+        self.inventory_ui = InventoryUI(self.equipment, self._base_capacity)
         self.skills_ui = SkillsUI(self.skills, self.progression)
         self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills)
         self.mission_ui = MissionUI(self.mission_manager, self.story, self.item_defs)
@@ -212,12 +216,18 @@ class PlayingState(GameState):
             self.current_walls.extend(arena.barriers)
 
     # ---- skills: turn ranks and upgrades into real stats ----
+    def _base_capacity(self) -> int:
+        """Pack slots before gear: the base size plus the Pack Rat skill."""
+        return settings.INVENTORY_CAPACITY + int(self.skills.bonus("carry_slots"))
+
     def _apply_skill_effects(self) -> None:
-        skills, weapon = self.skills, self.player.weapon
-        self.player.apply_bonuses(int(skills.bonus("max_health")),
-                                  skills.bonus("max_stamina"),
-                                  skills.bonus("move_speed"))
-        self.inventory.capacity = settings.INVENTORY_CAPACITY + int(skills.bonus("carry_slots"))
+        """Recompute every stat from scratch: base + skills + worn gear + weapon upgrades."""
+        skills, weapon, gear = self.skills, self.player.weapon, self.equipment.totals()
+        self.player.apply_bonuses(int(skills.bonus("max_health") + gear["max_health"]),
+                                  skills.bonus("max_stamina") + gear["max_stamina"],
+                                  skills.bonus("move_speed") + gear["move_speed"])
+        self.player.armor = int(gear["armor"])
+        self.inventory.capacity = self._base_capacity() + int(gear["carry_slots"])
         weapon.modifiers = {
             "damage": skills.bonus("damage") + self.crafting.upgrade_bonus("damage", weapon),
             "reload": (skills.bonus("reload_time_reduction")
@@ -419,7 +429,7 @@ class PlayingState(GameState):
             message = self.mission_ui.handle_event(event)
         elif name == "radio":
             message = self.radio_ui.handle_event(event)
-        if name in ("skills", "workshop"):
+        if name in ("inventory", "skills", "workshop"):
             self._apply_skill_effects()          # ranks or weapon upgrades may have changed
         if message:
             self.hud.notify(message, 2.0)

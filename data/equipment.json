@@ -1,0 +1,16 @@
+{
+  "equipment": [
+    {"id": "work_cap", "slot": "head", "armor": 2},
+    {"id": "combat_helmet", "slot": "head", "armor": 12},
+    {"id": "bandana", "slot": "face", "armor": 1},
+    {"id": "gas_mask", "slot": "face", "armor": 5},
+    {"id": "worn_jacket", "slot": "body", "armor": 6},
+    {"id": "tactical_vest", "slot": "body", "armor": 18, "move_speed": -0.02},
+    {"id": "butcher_plate", "slot": "body", "armor": 32, "max_health": 10, "move_speed": -0.04},
+    {"id": "small_pack", "slot": "backpack", "carry_slots": 2},
+    {"id": "hiking_pack", "slot": "backpack", "carry_slots": 4},
+    {"id": "tactical_pack", "slot": "backpack", "carry_slots": 6, "move_speed": -0.02},
+    {"id": "field_watch", "slot": "accessory", "max_stamina": 10},
+    {"id": "dog_tags", "slot": "accessory", "max_health": 10}
+  ]
+}

@@ -118,3 +118,10 @@ TRUCE_BREAK_TIME = 6.0           # seconds the safe zone stops protecting you af
 
 # --- Grenades ---
 GRENADES_FILE = "data/grenades.json"
+
+
+# --- Equipment and armor ---
+EQUIPMENT_FILE = "data/equipment.json"
+ARMOR_MAX_REDUCTION = 0.6        # armor never absorbs more than 60% of a hit
+ARMOR_HALF_POINT = 60.0          # the armor value that gives half of that maximum (30%)
+PLAYER_START_EQUIPMENT = {"head": "work_cap", "face": "bandana", "body": "worn_jacket"}

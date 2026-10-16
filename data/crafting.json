@@ -23,6 +23,30 @@
       "description": "A crude fragmentation grenade. Throw it with G.",
       "output": {"item": "grenade", "quantity": 1},
       "cost": {"scrap": 3, "chemicals": 2, "batteries": 1}
+    },
+    {
+      "id": "craft_combat_helmet", "name": "Combat Helmet",
+      "description": "A hard-shell helmet. Armor 12 (head).",
+      "output": {"item": "combat_helmet", "quantity": 1},
+      "cost": {"scrap": 6, "weapon_parts": 1}
+    },
+    {
+      "id": "craft_gas_mask", "name": "Gas Mask",
+      "description": "Filters the air and takes a hit. Armor 5 (face).",
+      "output": {"item": "gas_mask", "quantity": 1},
+      "cost": {"scrap": 4, "chemicals": 2, "batteries": 1}
+    },
+    {
+      "id": "craft_small_pack", "name": "Small Pack",
+      "description": "A rucksack. +2 inventory slots (backpack).",
+      "output": {"item": "small_pack", "quantity": 1},
+      "cost": {"scrap": 8, "medical_supplies": 1}
+    },
+    {
+      "id": "craft_field_watch", "name": "Field Watch",
+      "description": "Helps you pace your breathing. +10 stamina (accessory).",
+      "output": {"item": "field_watch", "quantity": 1},
+      "cost": {"scrap": 4, "batteries": 2}
     }
   ],
   "weapon_upgrades": [

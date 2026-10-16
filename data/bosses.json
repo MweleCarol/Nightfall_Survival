@@ -12,7 +12,7 @@
       "rewards": {
         "xp": 600,
         "skill_points": 2,
-        "items": {"weapon_parts": 5, "medkit": 3, "scrap": 60}
+                "items": {"weapon_parts": 5, "medkit": 3, "scrap": 60, "butcher_plate": 1}
       },
       "attacks": {
         "cleave": {"damage": 25, "windup": 0.7, "cooldown": 2.0, "radius": 62, "reach": 70, "trigger_range": 120},

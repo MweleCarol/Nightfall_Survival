@@ -12,6 +12,7 @@ from src.player.inventory import Inventory
 from src.player.stats import Stats
 from src.world.camera import Camera
 from src.world.collision import collide_axis
+from src.combat.armor import damage_reduction
 
 
 class Player:
@@ -23,6 +24,7 @@ class Player:
         self.weapon = weapon
         self.inventory = inventory
         self.speed_multiplier = 1.0
+        self.armor = 0                    # set from the worn equipment
         self.rect = pygame.Rect(0, 0, settings.PLAYER_SIZE, settings.PLAYER_SIZE)
         self.aim_direction = Vector2(1, 0)
         self.is_sprinting = False
@@ -36,7 +38,9 @@ class Player:
             self.aim_direction = offset.normalize()
 
     def take_damage(self, amount: int) -> int:
-        """Apply damage and trigger the hurt flash. Returns damage actually dealt."""
+        """Apply damage (reduced by armor) and trigger the hurt flash. Returns damage actually dealt."""
+        if amount > 0 and self.armor > 0:
+            amount = max(1, round(amount * (1.0 - damage_reduction(self.armor))))
         dealt = self.stats.take_damage(amount)
         if dealt:
             self.hurt_timer = settings.PLAYER_HURT_FLASH
