@@ -1,0 +1,15 @@
+{
+  "grenades": [
+    {
+      "id": "grenade",
+      "name": "Frag Grenade",
+      "damage": 110,
+      "radius": 150,
+      "fuse": 1.8,
+      "throw_speed": 520,
+      "max_range": 460,
+      "knockback": 120,
+      "self_damage_factor": 0.5
+    }
+  ]
+}

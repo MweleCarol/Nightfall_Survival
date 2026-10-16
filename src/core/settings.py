@@ -73,7 +73,7 @@ ITEMS_FILE = "data/items.json"
 LOOT_TABLES_FILE = "data/loot_tables.json"
 WAVES_FILE = "data/waves.json"
 INVENTORY_CAPACITY = 20                 # slots; one slot holds up to the item's max_stack
-PLAYER_START_ITEMS = {"ammo_9mm": 48, "medkit": 1}
+PLAYER_START_ITEMS = {"ammo_9mm": 48, "medkit": 1, "grenade": 2}
 CONTAINER_INTERACT_RANGE = 60           # pixels
 PICKUP_RADIUS = 34
 PICKUP_LIFETIME = 90.0                  # seconds before a dropped item disappears
@@ -114,3 +114,7 @@ BOSSES_FILE = "data/bosses.json"
 ARENAS_FILE = "data/arenas.json"
 ARENA_WARNING_MARGIN = 160       # pixels around an arena where the warning banner appears
 TRUCE_BREAK_TIME = 6.0           # seconds the safe zone stops protecting you after you shoot
+
+
+# --- Grenades ---
+GRENADES_FILE = "data/grenades.json"

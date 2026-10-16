@@ -17,6 +17,12 @@
       "description": "Hand-loaded rounds.",
       "output": {"item": "ammo_9mm", "quantity": 12},
       "cost": {"scrap": 3, "chemicals": 1}
+    },
+    {
+      "id": "craft_grenade", "name": "Frag Grenade",
+      "description": "A crude fragmentation grenade. Throw it with G.",
+      "output": {"item": "grenade", "quantity": 1},
+      "cost": {"scrap": 3, "chemicals": 2, "batteries": 1}
     }
   ],
   "weapon_upgrades": [

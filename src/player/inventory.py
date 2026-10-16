@@ -8,7 +8,7 @@ from typing import Any
 from src.core import settings
 from src.services.data_loader import DataLoadError, load_json, require_field
 
-ITEM_TYPES = ("ammo", "resource", "consumable", "quest")
+ITEM_TYPES = ("ammo", "resource", "consumable", "throwable", "quest")
 RARITIES = ("common", "uncommon", "rare", "epic", "legendary")
 
 
