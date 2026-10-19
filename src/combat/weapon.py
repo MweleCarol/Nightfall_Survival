@@ -9,6 +9,9 @@ from src.services.data_loader import DataLoadError, load_json, require_field
 
 _NUMBER = (int, float)
 
+# The places an attachment can be fitted to a weapon.
+ATTACHMENT_SLOTS = ("optic", "muzzle", "grip")
+
 
 @dataclass(frozen=True)
 class WeaponDef:
@@ -72,15 +75,19 @@ class AmmoSource(Protocol):
 
 
 class Weapon:
-    """A weapon being carried: ammo, cooldown, reload state and upgrades.
+    """A weapon being carried: ammo, cooldown, reload state, upgrades and attachments.
 
     Spare ammo comes from `ammo_source` (the Inventory) when one is given,
     otherwise from a plain `reserve` number (handy for tests).
 
-    `modifiers` holds the combined bonus from skills and weapon upgrades:
-        "damage"   - fraction, 0.2 means +20% damage
-        "reload"   - fraction, 0.2 means reloads take 20% less time
-        "magazine" - extra rounds in the magazine
+    `modifiers` holds the combined bonus from skills, weapon upgrades and attachments:
+        "damage"    fraction, 0.2 means +20% damage
+        "range"     fraction, 0.1 means +10% range
+        "spread"    fraction, -0.15 means 15% tighter aim
+        "fire_rate" fraction, 0.05 means 5% faster shooting
+        "reload"    fraction, 0.2 means reloads take 20% less time
+        "magazine"  extra rounds in the magazine
+        "recoil"    fraction, -0.4 means 40% less screen kick
     """
 
     def __init__(self, definition: WeaponDef, loaded: int | None = None,
@@ -91,7 +98,8 @@ class Weapon:
         self._reserve = max(0, reserve)
         self.ammo_source = ammo_source
         self.modifiers: dict[str, float] = {}
-        self.upgrade_levels: dict[str, int] = {}   # which upgrades were bought, and how far
+        self.upgrade_levels: dict[str, int] = {}    # which upgrades were bought, and how far
+        self.attachments: dict[str, str | None] = {slot: None for slot in ATTACHMENT_SLOTS}
         self.cooldown = 0.0
         self.reload_remaining = 0.0
         self.is_reloading = False
@@ -109,6 +117,23 @@ class Weapon:
     def reload_time(self) -> float:
         factor = max(0.25, 1.0 - self.modifiers.get("reload", 0.0))   # never faster than 25%
         return self.definition.reload_time * factor
+
+    @property
+    def range(self) -> float:
+        return self.definition.range * max(0.25, 1.0 + self.modifiers.get("range", 0.0))
+
+    @property
+    def spread(self) -> float:
+        return self.definition.spread * max(0.0, 1.0 + self.modifiers.get("spread", 0.0))
+
+    @property
+    def fire_rate(self) -> float:
+        return self.definition.fire_rate * max(0.25, 1.0 + self.modifiers.get("fire_rate", 0.0))
+
+    @property
+    def recoil(self) -> float:
+        """A multiplier for the screen shake of each shot (1.0 = normal)."""
+        return max(0.0, 1.0 + self.modifiers.get("recoil", 0.0))
 
     # ---- ammo ----
     @property
@@ -137,7 +162,7 @@ class Weapon:
         if not self.can_fire():
             return False
         self.loaded -= 1
-        self.cooldown = 1.0 / self.definition.fire_rate
+        self.cooldown = 1.0 / self.fire_rate
         return True
 
     def start_reload(self) -> bool:

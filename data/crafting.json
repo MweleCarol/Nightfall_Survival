@@ -47,6 +47,48 @@
       "description": "Helps you pace your breathing. +10 stamina (accessory).",
       "output": {"item": "field_watch", "quantity": 1},
       "cost": {"scrap": 4, "batteries": 2}
+    },
+    {
+      "id": "craft_red_dot_sight", "name": "Red Dot Sight",
+      "description": "Optic. +10% range, -15% spread.",
+      "output": {"item": "red_dot_sight", "quantity": 1},
+      "cost": {"scrap": 4, "batteries": 1}
+    },
+    {
+      "id": "craft_long_range_scope", "name": "Long Range Scope",
+      "description": "Optic. +35% range, -25% spread, -5% fire rate.",
+      "output": {"item": "long_range_scope", "quantity": 1},
+      "cost": {"scrap": 8, "weapon_parts": 1, "batteries": 1}
+    },
+    {
+      "id": "craft_suppressor", "name": "Suppressor",
+      "description": "Muzzle. -5% damage, -40% recoil.",
+      "output": {"item": "suppressor", "quantity": 1},
+      "cost": {"scrap": 6, "chemicals": 2, "weapon_parts": 1}
+    },
+    {
+      "id": "craft_compensator", "name": "Compensator",
+      "description": "Muzzle. -10% spread, -30% recoil.",
+      "output": {"item": "compensator", "quantity": 1},
+      "cost": {"scrap": 5, "weapon_parts": 1}
+    },
+    {
+      "id": "craft_long_barrel", "name": "Long Barrel",
+      "description": "Muzzle. +10% damage, +15% range, +15% recoil.",
+      "output": {"item": "long_barrel", "quantity": 1},
+      "cost": {"scrap": 8, "weapon_parts": 2}
+    },
+    {
+      "id": "craft_foregrip", "name": "Foregrip",
+      "description": "Grip. -12% spread, -20% recoil.",
+      "output": {"item": "foregrip", "quantity": 1},
+      "cost": {"scrap": 4, "medical_supplies": 1}
+    },
+    {
+      "id": "craft_angled_grip", "name": "Angled Grip",
+      "description": "Grip. +12% reload speed, +5% fire rate.",
+      "output": {"item": "angled_grip", "quantity": 1},
+      "cost": {"scrap": 5, "chemicals": 1}
     }
   ],
   "weapon_upgrades": [

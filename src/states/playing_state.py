@@ -49,6 +49,7 @@ from src.world.map import GameMap
 from src.world.story_world import StoryObject, load_story_world
 from src.world.effects_manager import EffectsManager
 from src.player.equipment import Equipment, load_equipment_defs
+from src.combat.attachments import attachment_modifiers, load_attachment_defs
 
 # Keys that close each overlay screen.
 OVERLAY_CLOSE_KEYS = {
@@ -102,6 +103,7 @@ class PlayingState(GameState):
         self.progression = Progression(event_bus=self.game.event_bus)
         self.skills = SkillSet(load_skill_defs())
         self.crafting = CraftingSystem(load_crafting_data(self.item_defs), self.inventory, self.rng)
+        self.attachment_defs = load_attachment_defs(self.item_defs)
 
         # Combat, enemies, waves, loot
         self.combat = CombatSystem(event_bus=self.game.event_bus)
@@ -159,7 +161,8 @@ class PlayingState(GameState):
         self.boss_hud = BossHUD()
         self.inventory_ui = InventoryUI(self.equipment, self._base_capacity)
         self.skills_ui = SkillsUI(self.skills, self.progression)
-        self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills)
+        self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills,
+                                      self.attachment_defs)
         self.mission_ui = MissionUI(self.mission_manager, self.story, self.item_defs)
         self.radio_ui = RadioUI(self.story)
         self.reader_ui = ReaderUI()
@@ -228,12 +231,15 @@ class PlayingState(GameState):
                                   skills.bonus("move_speed") + gear["move_speed"])
         self.player.armor = int(gear["armor"])
         self.inventory.capacity = self._base_capacity() + int(gear["carry_slots"])
-        weapon.modifiers = {
+        modifiers = {
             "damage": skills.bonus("damage") + self.crafting.upgrade_bonus("damage", weapon),
             "reload": (skills.bonus("reload_time_reduction")
                        + self.crafting.upgrade_bonus("reload", weapon)),
             "magazine": self.crafting.upgrade_bonus("magazine", weapon),
         }
+        for key, value in attachment_modifiers(weapon, self.attachment_defs).items():
+            modifiers[key] = modifiers.get(key, 0.0) + value       # attachments add to the same stats
+        weapon.modifiers = modifiers
 
     # ---- event routing: missions and story listen to everything through here ----
     def _make_router(self, event_name: str):

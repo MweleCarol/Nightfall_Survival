@@ -58,7 +58,7 @@ class EffectsManager:
         self.particles.burst(Vector2(data["origin"]), Vector2(data["direction"]), 5,
                              speed=(120, 320), spread=28, life=(0.08, 0.18), size=(2, 3),
                              color=FLASH_COLOR, drag=6.0)
-        self.shake.add_trauma(0.10)                      # a little recoil
+        self.shake.add_trauma(0.10 * data.get("recoil", 1.0))      # attachments change the kick                      # a little recoil
 
     def _on_shot_impact(self, data: dict) -> None:
         bounce = -Vector2(data["direction"])             # sparks fly back towards the shooter

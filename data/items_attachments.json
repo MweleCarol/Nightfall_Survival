@@ -1,0 +1,18 @@
+{
+  "items": [
+    {"id": "red_dot_sight", "name": "Red Dot Sight", "type": "attachment", "max_stack": 1, "rarity": "uncommon",
+     "description": "A battery-powered optic. Tighter groups and a little more reach. Fit it at the weapon station."},
+    {"id": "long_range_scope", "name": "Long Range Scope", "type": "attachment", "max_stack": 1, "rarity": "rare",
+     "description": "A magnified scope. Great reach and accuracy, but slower to bring on target."},
+    {"id": "suppressor", "name": "Suppressor", "type": "attachment", "max_stack": 1, "rarity": "rare",
+     "description": "Soaks up the kick of every shot, at a small cost in stopping power."},
+    {"id": "compensator", "name": "Compensator", "type": "attachment", "max_stack": 1, "rarity": "uncommon",
+     "description": "Vents gas upward to keep the muzzle down. Calmer and tighter."},
+    {"id": "long_barrel", "name": "Long Barrel", "type": "attachment", "max_stack": 1, "rarity": "rare",
+     "description": "More damage and reach, but it kicks harder."},
+    {"id": "foregrip", "name": "Foregrip", "type": "attachment", "max_stack": 1, "rarity": "uncommon",
+     "description": "A second hand on the gun steadies every shot."},
+    {"id": "angled_grip", "name": "Angled Grip", "type": "attachment", "max_stack": 1, "rarity": "uncommon",
+     "description": "Faster, smoother reloads and a slightly quicker trigger."}
+  ]
+}

@@ -8,7 +8,7 @@ from typing import Any
 from src.core import settings
 from src.services.data_loader import DataLoadError, load_json, require_field
 
-ITEM_TYPES = ("ammo", "resource", "consumable", "throwable", "equipment", "quest")
+ITEM_TYPES = ("ammo", "resource", "consumable", "throwable", "equipment", "attachment", "quest")
 RARITIES = ("common", "uncommon", "rare", "epic", "legendary")
 
 
@@ -47,19 +47,23 @@ class ItemDef:
 
 
 def load_item_defs(path: str = settings.ITEMS_FILE) -> dict[str, ItemDef]:
-    data = load_json(path)
-    items = require_field(data, "items", list, path)
+    """Load the items file, plus any extra item files when loading the default one."""
+    paths = [path]
+    if path == settings.ITEMS_FILE:
+        paths += list(settings.EXTRA_ITEM_FILES)
     definitions: dict[str, ItemDef] = {}
-    for index, item in enumerate(items):
-        where = f"{path}: items[{index}]"
-        if not isinstance(item, dict):
-            raise DataLoadError(f"{where}: must be an object")
-        definition = ItemDef.from_dict(item, where)
-        if definition.id in definitions:
-            raise DataLoadError(f"{where}: duplicate id '{definition.id}'")
-        definitions[definition.id] = definition
+    for file_path in paths:
+        data = load_json(file_path)
+        items = require_field(data, "items", list, file_path)
+        for index, item in enumerate(items):
+            where = f"{file_path}: items[{index}]"
+            if not isinstance(item, dict):
+                raise DataLoadError(f"{where}: must be an object")
+            definition = ItemDef.from_dict(item, where)
+            if definition.id in definitions:
+                raise DataLoadError(f"{where}: duplicate id '{definition.id}'")
+            definitions[definition.id] = definition
     return definitions
-
 
 class Inventory:
     """Slot-based storage. A slot holds one item type, up to that item's max_stack."""

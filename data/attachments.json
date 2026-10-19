@@ -1,0 +1,11 @@
+{
+  "attachments": [
+    {"id": "red_dot_sight", "slot": "optic", "range": 0.10, "spread": -0.15},
+    {"id": "long_range_scope", "slot": "optic", "range": 0.35, "spread": -0.25, "fire_rate": -0.05},
+    {"id": "suppressor", "slot": "muzzle", "damage": -0.05, "recoil": -0.40},
+    {"id": "compensator", "slot": "muzzle", "spread": -0.10, "recoil": -0.30},
+    {"id": "long_barrel", "slot": "muzzle", "damage": 0.10, "range": 0.15, "recoil": 0.15},
+    {"id": "foregrip", "slot": "grip", "spread": -0.12, "recoil": -0.20},
+    {"id": "angled_grip", "slot": "grip", "reload": 0.12, "fire_rate": 0.05}
+  ]
+}

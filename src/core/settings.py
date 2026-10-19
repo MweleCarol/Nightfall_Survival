@@ -125,3 +125,8 @@ EQUIPMENT_FILE = "data/equipment.json"
 ARMOR_MAX_REDUCTION = 0.6        # armor never absorbs more than 60% of a hit
 ARMOR_HALF_POINT = 60.0          # the armor value that gives half of that maximum (30%)
 PLAYER_START_EQUIPMENT = {"head": "work_cap", "face": "bandana", "body": "worn_jacket"}
+
+
+# --- Weapon attachments ---
+ATTACHMENTS_FILE = "data/attachments.json"
+EXTRA_ITEM_FILES = ("data/items_attachments.json",)     # more item files, merged into items.json

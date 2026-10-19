@@ -44,15 +44,15 @@ class CombatSystem:
                     crit_chance: float = 0.0) -> bool:
         """Try to fire. Returns True if a shot was actually fired.
 
-        Events: SHOT_FIRED (muzzle position and direction), ENEMY_HIT (where and how hard),
-        SHOT_IMPACT (a bullet stopped by a wall), ENEMY_DIED.
+        Events: SHOT_FIRED (muzzle position, direction and recoil), ENEMY_HIT (where and how
+        hard), SHOT_IMPACT (a bullet stopped by a wall), ENEMY_DIED.
         """
         if not weapon.fire():
             return False
 
         definition = weapon.definition
-        direction = apply_spread(aim_direction, definition.spread, self.rng)
-        hit = cast_ray(origin, direction, definition.range, enemies, walls)
+        direction = apply_spread(aim_direction, weapon.spread, self.rng)
+        hit = cast_ray(origin, direction, weapon.range, enemies, walls)
 
         end = origin + direction * hit.distance
         muzzle = origin + direction * settings.MUZZLE_OFFSET
@@ -60,7 +60,7 @@ class CombatSystem:
         critical = False
 
         self._emit("SHOT_FIRED", {"weapon": definition.id, "origin": (muzzle.x, muzzle.y),
-                                  "direction": heading})
+                                  "direction": heading, "recoil": weapon.recoil})
 
         if hit.enemy is not None:
             critical = crit_chance > 0 and self.rng.random() < crit_chance
@@ -76,7 +76,7 @@ class CombatSystem:
                     "xp": hit.enemy.xp_reward,
                     "position": (hit.enemy.position.x, hit.enemy.position.y),
                 })
-        elif hit.distance < definition.range - 1e-6:           # something solid stopped the bullet
+        elif hit.distance < weapon.range - 1e-6:                # something solid stopped the bullet
             self._emit("SHOT_IMPACT", {"position": (end.x, end.y), "direction": heading})
 
         self.tracers.append(Tracer(muzzle, end, settings.TRACER_LIFETIME,
