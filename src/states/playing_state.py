@@ -29,6 +29,9 @@ from src.systems.wave_manager import WaveManager, load_wave_config
 from src.ui.boss_hud import BossHUD
 from src.ui.combat_hud import CombatHUD
 from src.ui.hud import HUD
+from src.ui.hub import HubContext, HubUI
+from src.ui.hub_inventory import InventoryPage
+from src.ui.hub_skills import SkillsPage
 from src.ui.inventory_ui import InventoryUI
 from src.ui.mission_hud import MissionHUD
 from src.ui.mission_ui import MissionUI
@@ -161,6 +164,9 @@ class PlayingState(GameState):
         self.boss_hud = BossHUD()
         self.inventory_ui = InventoryUI(self.equipment, self._base_capacity)
         self.skills_ui = SkillsUI(self.skills, self.progression)
+        self.hub = HubUI(self.game.assets, self._hub_context)
+        self.hub.set_page("inventory", InventoryPage())
+        self.hub.set_page("skills", SkillsPage())
         self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills,
                                       self.attachment_defs)
         self.mission_ui = MissionUI(self.mission_manager, self.story, self.item_defs)
@@ -409,34 +415,41 @@ class PlayingState(GameState):
     def _open_overlay(self, name: str) -> None:
         if self.player.stats.is_dead:
             return
+        if name in ("inventory", "skills"):                  # these two live in the hub now
+            self.hub.open(name)
+            self.active_overlay = "hub"
+            pygame.mouse.set_visible(True)                   # the hub can be clicked
+            return
         self.active_overlay = name
-        if name == "inventory":
-            self.inventory_ui.selected = 0
-        elif name == "skills":
-            self.skills_ui.reset()
-        elif name == "journal":
+        if name == "journal":
             self.mission_ui.open(board_mode=False)
 
     def _handle_overlay_event(self, event: pygame.event.Event) -> None:
+        name = self.active_overlay
+        if name == "hub":
+            message = self.hub.handle_event(event)
+            self._apply_skill_effects()                      # gear, skills or attachments may have changed
+            if message:
+                self.hud.notify(message, 2.0)
+            if self.hub.close_requested:
+                self.hub.close_requested = False
+                self.active_overlay = None
+                pygame.mouse.set_visible(False)             # back to the in-game crosshair
+            return
         if event.type != pygame.KEYDOWN:
             return
-        name = self.active_overlay
         if event.key in OVERLAY_CLOSE_KEYS[name]:
             self.active_overlay = None
             return
         message = None
-        if name == "inventory":
-            message = self.inventory_ui.handle_event(event, self.player)
-        elif name == "skills":
-            message = self.skills_ui.handle_event(event)
-        elif name == "workshop":
+        if name == "workshop":
             message = self.workshop_ui.handle_event(event)
         elif name in ("journal", "board"):
             message = self.mission_ui.handle_event(event)
         elif name == "radio":
             message = self.radio_ui.handle_event(event)
-        if name in ("inventory", "skills", "workshop"):
-            self._apply_skill_effects()          # ranks or weapon upgrades may have changed
+        if name == "workshop":
+            self._apply_skill_effects()
         if message:
             self.hud.notify(message, 2.0)
 
@@ -817,6 +830,17 @@ class PlayingState(GameState):
             truce_broken=in_zone and self.safe_rules.truce_broken,
             quick_items=[(d.id, d.type, self.inventory.count(d.id)) for d in healing],
             unread_radio=self.story.unread_count)
+
+    def _hub_context(self) -> HubContext:
+        """What the hub pages need to know right now."""
+        in_zone = self.map.in_safe_zone(self.player.rect)
+        return HubContext(
+            assets=self.game.assets, item_defs=self.item_defs, player=self.player,
+            inventory=self.inventory, equipment=self.equipment, skills=self.skills,
+            progression=self.progression, base_capacity=self._base_capacity,
+            attachment_defs=self.attachment_defs, cycle_label=self.cycle.label,
+            clock_text=self.cycle.clock_text(), is_day=self.cycle.is_day,
+            location="SAFEHOUSE" if in_zone else "DISTRICT")
     
     # ---- drawing ----
     def render(self, surface: pygame.Surface) -> None:
@@ -865,7 +889,9 @@ class PlayingState(GameState):
             self.boss_hud.draw(surface, self.boss)
 
         overlay = self.active_overlay
-        if overlay == "inventory":
+        if overlay == "hub":
+            self.hub.draw(surface)
+        elif overlay == "inventory":
             self.inventory_ui.draw(surface, self.player)
         elif overlay == "skills":
             self.skills_ui.draw(surface)
