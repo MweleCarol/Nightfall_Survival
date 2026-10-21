@@ -122,6 +122,20 @@ def draw_icon(surface: pygame.Surface, name: str, center: tuple[int, int],
     elif name == "book":
         pygame.draw.rect(surface, color, box(cx - r, cy - r * 0.8, r * 2, r * 1.6), 2)
         pygame.draw.line(surface, color, (cx, cy - r * 0.8), (cx, cy + r * 0.8), 2)
+    elif name == "bag":
+        pygame.draw.rect(surface, color, box(cx - r * 0.7, cy - r * 0.45, r * 1.4, r * 1.45), 2, border_radius=3)
+        pygame.draw.arc(surface, color, box(cx - r * 0.4, cy - r * 1.0, r * 0.8, r * 1.0), 0, 3.14159, 2)
+    elif name == "map":
+        pygame.draw.polygon(surface, color, [(cx - r, cy - r * 0.6), (cx - r * 0.35, cy - r * 0.9),
+                                             (cx + r * 0.35, cy - r * 0.6), (cx + r, cy - r * 0.9),
+                                             (cx + r, cy + r * 0.6), (cx + r * 0.35, cy + r * 0.9),
+                                             (cx - r * 0.35, cy + r * 0.6), (cx - r, cy + r * 0.9)], 2)
+        pygame.draw.line(surface, color, (cx - r * 0.35, cy - r * 0.9), (cx - r * 0.35, cy + r * 0.6), 2)
+        pygame.draw.line(surface, color, (cx + r * 0.35, cy - r * 0.6), (cx + r * 0.35, cy + r * 0.9), 2)
+    elif name == "flag":
+        pygame.draw.line(surface, color, (cx - r * 0.6, cy - r), (cx - r * 0.6, cy + r), 2)
+        pygame.draw.polygon(surface, color, [(cx - r * 0.6, cy - r), (cx + r, cy - r * 0.5),
+                                             (cx - r * 0.6, cy)], 2)
     elif name == "disk":
         pygame.draw.rect(surface, color, box(cx - r, cy - r, r * 2, r * 2), 2)
         pygame.draw.rect(surface, color, box(cx - r * 0.5, cy - r, r, r * 0.7), 2)

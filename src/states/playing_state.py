@@ -43,6 +43,9 @@ from src.ui.survival_hud import SurvivalHUD
 from src.ui.workshop_ui import WorkshopUI
 from src.ui.game_hud import GameHUD, HudState
 from src.ui.objective_markers import build_marker_sources, next_marker
+from src.ui.hub_crafting import CraftingPage
+from src.ui.hub_map import MapPage
+from src.ui.hub_missions import MissionsPage, pick_tracked_mission
 from src.world.arena import Arena, ArenaState, load_arenas
 from src.world.camera import Camera
 from src.world.day_night import DayNightCycle
@@ -165,8 +168,15 @@ class PlayingState(GameState):
         self.inventory_ui = InventoryUI(self.equipment, self._base_capacity)
         self.skills_ui = SkillsUI(self.skills, self.progression)
         self.hub = HubUI(self.game.assets, self._hub_context)
+        self.crafting_page = CraftingPage()
+        self.missions_page = MissionsPage()
+        self.hub.set_page("map", MapPage())
         self.hub.set_page("inventory", InventoryPage())
+        self.hub.set_page("crafting", self.crafting_page)
         self.hub.set_page("skills", SkillsPage())
+        self.hub.set_page("missions", self.missions_page)
+        self.tracked_mission_id: str | None = None      # the mission the player chose to follow
+        self.hub_board_mode = False                     # True while the hub was opened at the mission board
         self.workshop_ui = WorkshopUI(self.crafting, self.inventory, weapon, self.skills,
                                       self.attachment_defs)
         self.mission_ui = MissionUI(self.mission_manager, self.story, self.item_defs)
@@ -200,6 +210,7 @@ class PlayingState(GameState):
             ("MISSION_FAILED", self._on_mission_failed),
             ("RADIO_MESSAGE", self._on_radio_message),
             ("CHAPTER_UNLOCKED", self._on_chapter_unlocked),
+            ("HUB_REQUESTED", self._on_hub_requested),
             ("BOSS_PHASE_CHANGED", self._on_boss_phase_changed),
             ("BOSS_STUNNED", self._on_boss_stunned),
             ("BOSS_DEFEATED", self._on_boss_defeated),
@@ -379,6 +390,8 @@ class PlayingState(GameState):
             self._open_overlay("skills")
         elif key == pygame.K_m:
             self._open_overlay("journal")
+        elif key == pygame.K_l:
+            self._open_overlay("map")
         elif key == pygame.K_e:
             self._interact()
         elif key == pygame.K_q:
@@ -415,14 +428,18 @@ class PlayingState(GameState):
     def _open_overlay(self, name: str) -> None:
         if self.player.stats.is_dead:
             return
-        if name in ("inventory", "skills"):                  # these two live in the hub now
-            self.hub.open(name)
-            self.active_overlay = "hub"
-            pygame.mouse.set_visible(True)                   # the hub can be clicked
+        hub_tabs = {"inventory": "inventory", "skills": "skills", "journal": "missions",
+                    "missions": "missions", "map": "map", "crafting": "crafting"}
+        if name in hub_tabs:
+            self._open_hub(hub_tabs[name])
             return
         self.active_overlay = name
-        if name == "journal":
-            self.mission_ui.open(board_mode=False)
+
+    def _open_hub(self, tab: str, board: bool = False) -> None:
+        self.hub_board_mode = board              # set first: the page reads it when it opens
+        self.hub.open(tab)
+        self.active_overlay = "hub"
+        pygame.mouse.set_visible(True)           # the hub can be clicked
 
     def _handle_overlay_event(self, event: pygame.event.Event) -> None:
         name = self.active_overlay
@@ -689,11 +706,10 @@ class PlayingState(GameState):
 
     def _open_station(self, station_kind: str) -> None:
         if station_kind in ("workbench", "weapon_station"):
-            self.workshop_ui.open_tab("craft" if station_kind == "workbench" else "weapon")
-            self.active_overlay = "workshop"
+            self.crafting_page.set_category("all" if station_kind == "workbench" else "weapon")
+            self._open_hub("crafting")
         elif station_kind == "missions":
-            self.mission_ui.open(board_mode=True)
-            self.active_overlay = "board"
+            self._open_hub("missions", board=True)
         elif station_kind == "radio":
             self.radio_ui.open()
             self.active_overlay = "radio"
@@ -772,10 +788,14 @@ class PlayingState(GameState):
             self.enemies.append(self.enemy_factory.create("walker", (pos.x, pos.y)))
 
     def _tracked_mission(self):
-        """The mission shown in the objective panel: the first active story mission, else any."""
-        active = self.mission_manager.active()
-        story = [m for m in active if m.category == "story"]
-        return (story or active or [None])[0]
+        """The mission the HUD follows: the one the player chose, else the first active story mission."""
+        return pick_tracked_mission(self.mission_manager, self.tracked_mission_id)
+
+    def _set_tracked(self, mission_id: str) -> None:
+        self.tracked_mission_id = mission_id
+
+    def _on_hub_requested(self, data: dict) -> None:
+        self._open_overlay(data.get("tab", "inventory"))
 
     def _hud_state(self) -> HudState:
         import math
@@ -834,13 +854,24 @@ class PlayingState(GameState):
     def _hub_context(self) -> HubContext:
         """What the hub pages need to know right now."""
         in_zone = self.map.in_safe_zone(self.player.rect)
+        mission = self._tracked_mission()
+        marker = None
+        if mission is not None:
+            marker = next_marker(
+                mission, lambda i: self.mission_manager.is_objective_done(mission.id, i),
+                self.marker_sources)
         return HubContext(
             assets=self.game.assets, item_defs=self.item_defs, player=self.player,
             inventory=self.inventory, equipment=self.equipment, skills=self.skills,
             progression=self.progression, base_capacity=self._base_capacity,
             attachment_defs=self.attachment_defs, cycle_label=self.cycle.label,
             clock_text=self.cycle.clock_text(), is_day=self.cycle.is_day,
-            location="SAFEHOUSE" if in_zone else "DISTRICT")
+            location="SAFEHOUSE" if in_zone else "DISTRICT",
+            crafting=self.crafting, missions=self.mission_manager, story=self.story,
+            game_map=self.map, locations=self.story_world.locations,
+            discovered=self.discovered_locations, objective_marker=marker,
+            tracked_id=mission.id if mission else None, set_tracked=self._set_tracked,
+            can_accept=self.hub_board_mode, can_craft=in_zone)
     
     # ---- drawing ----
     def render(self, surface: pygame.Surface) -> None:

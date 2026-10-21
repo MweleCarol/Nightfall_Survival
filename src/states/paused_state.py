@@ -12,17 +12,20 @@ from src.ui.widgets import (
 
 ENTRIES = (
     ("RESUME", "play", True, "resume"),
+    ("INVENTORY", "bag", True, "hub:inventory"),
+    ("MAP", "map", True, "hub:map"),
+    ("MISSIONS", "flag", True, "hub:missions"),
     ("CONTROLS", "book", True, "controls"),
     ("SETTINGS", "gear", False, "settings"),
     ("SAVE GAME", "disk", False, "save"),
     ("MAIN MENU", "door", True, "menu"),
 )
-BUTTON_W, BUTTON_H, BUTTON_STEP = 312, 48, 56
+BUTTON_W, BUTTON_H, BUTTON_STEP = 312, 46, 52
 
 CONTROLS = (
     ("W A S D", "Move"), ("SHIFT", "Sprint"), ("MOUSE", "Aim"), ("LEFT CLICK", "Shoot"),
-    ("R", "Reload"), ("E", "Interact / search"), ("Q", "Quick heal"), ("TAB", "Inventory"),
-    ("K", "Skills"), ("M", "Journal and missions"), ("ESC", "Pause"), ("F3", "Debug overlay"),
+    ("R", "Reload"), ("E", "Interact / search"), ("Q", "Quick heal"), ("G", "Throw grenade"),
+    ("TAB", "Inventory and hub"), ("K", "Skills"), ("M", "Missions"), ("L", "Map"),
 )
 
 
@@ -40,7 +43,7 @@ class PausedState(GameState):
 
         x = (w - BUTTON_W) // 2
         self.buttons = [
-            MenuButton(label, icon, pygame.Rect(x, 250 + i * BUTTON_STEP, BUTTON_W, BUTTON_H),
+            MenuButton(label, icon, pygame.Rect(x, 214 + i * BUTTON_STEP, BUTTON_W, BUTTON_H),
                        self.font, enabled)
             for i, (label, icon, enabled, _action) in enumerate(ENTRIES)]
         self.model = MenuModel([entry[2] for entry in ENTRIES])
@@ -83,6 +86,9 @@ class PausedState(GameState):
     def _activate(self, action: str) -> None:
         if action == "resume":
             self.game.state_manager.pop_state()
+        elif action.startswith("hub:"):
+            self.game.state_manager.pop_state()                      # back to the game ...
+            self.game.event_bus.emit("HUB_REQUESTED", {"tab": action[4:]})   # ... which opens the hub
         elif action == "controls":
             self.mode = "controls"
         elif action == "menu":
@@ -103,7 +109,7 @@ class PausedState(GameState):
             self._draw_controls(surface)
             return
         title = render_tracked("PAUSED", self.title_font, theme.TEXT, 8)
-        surface.blit(title, title.get_rect(center=(w // 2, 170)))
+        surface.blit(title, title.get_rect(center=(w // 2, 132)))
 
         if self.mode == "confirm":
             question = self.font.render("LEAVE TO THE MAIN MENU?", True, theme.TEXT)

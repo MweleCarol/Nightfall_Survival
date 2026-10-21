@@ -37,6 +37,17 @@ class HubContext:
     clock_text: str = "08:00"
     is_day: bool = True
     location: str = "DISTRICT"
+    crafting: Any = None                      # the CraftingSystem
+    missions: Any = None                      # the MissionManager
+    story: Any = None                         # the StoryState
+    game_map: Any = None                      # the GameMap
+    locations: Any = ()                       # the named places (Location objects)
+    discovered: Any = ()                      # ids of the places the player has found
+    objective_marker: Any = None              # world position of the tracked objective
+    tracked_id: str | None = None             # the mission the HUD follows
+    set_tracked: Any = None                   # callback: set_tracked(mission_id)
+    can_accept: bool = False                  # True when opened at the mission board
+    can_craft: bool = True                    # False away from the safehouse
 
 
 class HubPage:
