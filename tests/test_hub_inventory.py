@@ -82,9 +82,9 @@ def test_filters_and_sort_modes_change_what_is_shown():
     assert len(page.items(ctx)) == 3
     press(page, ctx, pygame.K_q)                                    # wraps back to the last filter
     assert page.filter_index == 4
-    press(page, ctx, pygame.K_e)
-    press(page, ctx, pygame.K_e)
-    press(page, ctx, pygame.K_e)                                    # ALL -> AMMO -> GEAR -> CONSUMABLES
+    for _ in range(4):                                              # MATERIALS -> ALL -> AMMO -> GEAR -> CONSUMABLES
+        press(page, ctx, pygame.K_e)
+    assert page.filter_index == 3
     assert [item for item, _ in page.items(ctx)] == ["medkit"]
     press(page, ctx, pygame.K_r)
     assert page.sort_index == 1
