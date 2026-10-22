@@ -6,6 +6,7 @@ import logging
 import pygame
 
 from src.core import settings
+from src.audio.audio_manager import AudioManager
 from src.core.event_bus import EventBus
 from src.core.state_manager import StateManager
 from src.services.asset_manager import AssetManager
@@ -15,6 +16,7 @@ log = logging.getLogger(__name__)
 
 class Game:
     def __init__(self) -> None:
+        pygame.mixer.pre_init(settings.AUDIO_SAMPLE_RATE, -16, settings.AUDIO_CHANNELS, 512)
         pygame.init()
         pygame.display.set_caption(settings.TITLE)
         self.screen = pygame.display.set_mode(
@@ -25,6 +27,7 @@ class Game:
         self.event_bus = EventBus()
         self.assets = AssetManager()
         self.state_manager = StateManager()
+        self.audio = AudioManager.create(self.event_bus, self.assets.root)   # silent if no sound card
 
     def run(self) -> None:
         """Main loop: time -> input -> update -> render."""
@@ -40,6 +43,7 @@ class Game:
                 self.state_manager.handle_events(events)
 
                 self.state_manager.update(dt)
+                self.audio.update(dt)
 
                 self.screen.fill(settings.COLOR_BACKGROUND)
                 self.state_manager.render(self.screen)
@@ -53,4 +57,5 @@ class Game:
 
     def shutdown(self) -> None:
         log.info("Shutting down")
+        self.audio.shutdown()
         pygame.quit()

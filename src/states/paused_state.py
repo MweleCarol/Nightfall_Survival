@@ -34,6 +34,7 @@ class PausedState(GameState):
 
     def enter(self) -> None:
         pygame.mouse.set_visible(True)
+        self.game.audio.duck(True)                           # music dips while paused
         assets = self.game.assets
         w = settings.SCREEN_WIDTH
         self.dim = make_dim()
@@ -58,6 +59,7 @@ class PausedState(GameState):
 
     def exit(self) -> None:
         pygame.mouse.set_visible(False)      # back to the in-game crosshair
+        self.game.audio.duck(False)      # back to the in-game crosshair
 
     # ---- input ----
     def handle_event(self, event: pygame.event.Event) -> None:
@@ -69,7 +71,7 @@ class PausedState(GameState):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.mode = "menu"
                 return
-            index = handle_menu_input(event, self.confirm_buttons, self.confirm_model)
+            index = handle_menu_input(event, self.confirm_buttons, self.confirm_model, sound=self.game.audio.play)
             if index == 0:
                 self.mode = "menu"
             elif index == 1:
@@ -79,7 +81,7 @@ class PausedState(GameState):
             if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_p):
                 self.game.state_manager.pop_state()
                 return
-            index = handle_menu_input(event, self.buttons, self.model)
+            index = handle_menu_input(event, self.buttons, self.model, sound=self.game.audio.play)
             if index is not None:
                 self._activate(ENTRIES[index][3])
 

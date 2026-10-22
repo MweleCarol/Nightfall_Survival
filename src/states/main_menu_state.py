@@ -29,6 +29,7 @@ FADE_OUT = 0.6
 class MainMenuState(GameState):
     def enter(self) -> None:
         pygame.mouse.set_visible(True)
+        self.game.audio.set_music("menu")
         assets = self.game.assets
         w, h = settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT
 
@@ -77,7 +78,7 @@ class MainMenuState(GameState):
     def handle_event(self, event: pygame.event.Event) -> None:
         if self.leaving is not None:
             return
-        index = handle_menu_input(event, self.buttons, self.model)
+        index = handle_menu_input(event, self.buttons, self.model, sound=self.game.audio.play)
         if index is not None:
             self._activate(ENTRIES[index][3])
 

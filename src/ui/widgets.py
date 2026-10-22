@@ -4,6 +4,7 @@ from __future__ import annotations
 import pygame
 
 from src.core import settings
+from typing import Callable
 
 
 class SelectionList:
@@ -235,27 +236,44 @@ class MenuButton:
         draw_icon(surface, self.icon, (x + 2 + self.DIVIDER // 2, y + self.rect.height // 2),
                   icon_color, 20)
 
-
 def handle_menu_input(event: pygame.event.Event, buttons: list[MenuButton],
-                      model: MenuModel) -> int | None:
+                      model: MenuModel, sound: Callable[[str], None] | None = None) -> int | None:
     """Keyboard and mouse navigation shared by every button menu.
 
     Returns the index of an entry when it was activated (Enter, Space or a click).
+    `sound`, if given, is called with "ui_move", "ui_confirm" or "ui_deny" at the right moments.
     """
+    def play(name: str) -> None:
+        if sound is not None:
+            sound(name)
+
     if event.type == pygame.MOUSEMOTION:
+        previous = model.selected
         model.hover = next((i for i, b in enumerate(buttons) if b.contains(event.pos)), None)
         if model.hover is not None:
             model.select(model.hover)                    # ignored for disabled entries
+            if model.selected != previous:
+                play("ui_move")
     elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
         for index, button in enumerate(buttons):
-            if button.contains(event.pos) and model.select(index):
-                return index
+            if button.contains(event.pos):
+                if model.select(index):
+                    play("ui_confirm")
+                    return index
+                play("ui_deny")
     elif event.type == pygame.KEYDOWN:
+        previous = model.selected
         if event.key in (pygame.K_UP, pygame.K_w):
             model.move(-1)
+            if model.selected != previous:
+                play("ui_move")
         elif event.key in (pygame.K_DOWN, pygame.K_s):
             model.move(1)
+            if model.selected != previous:
+                play("ui_move")
         elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
             if model.enabled and model.enabled[model.selected]:
+                play("ui_confirm")
                 return model.selected
+            play("ui_deny")
     return None

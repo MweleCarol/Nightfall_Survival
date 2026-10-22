@@ -130,3 +130,16 @@ PLAYER_START_EQUIPMENT = {"head": "work_cap", "face": "bandana", "body": "worn_j
 # --- Weapon attachments ---
 ATTACHMENTS_FILE = "data/attachments.json"
 EXTRA_ITEM_FILES = ("data/items_attachments.json",)     # more item files, merged into items.json
+
+
+# --- Audio ---
+AUDIO_ENABLED = True
+AUDIO_SAMPLE_RATE = 22050            # mono 22 kHz keeps the generated placeholder sounds cheap to make
+AUDIO_CHANNELS = 1
+AUDIO_MASTER_VOLUME = 0.8
+AUDIO_SFX_VOLUME = 0.8
+AUDIO_MUSIC_VOLUME = 0.5
+AUDIO_DUCK_FACTOR = 0.35             # music volume while the game is paused
+AUDIO_MUSIC_FADE = 1.5               # seconds for a music track to fade fully in or out
+AUDIO_HEARING_FULL = 250.0           # sounds closer than this (pixels) play at full volume ...
+AUDIO_HEARING_RANGE = 1100.0         # ... and fade to silence at this distance

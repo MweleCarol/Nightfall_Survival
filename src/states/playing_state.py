@@ -398,7 +398,7 @@ class PlayingState(GameState):
             self._quick_heal()
         elif key == pygame.K_r:
             if not self.player.stats.is_dead:
-                self.player.weapon.start_reload()
+                self._start_reload()
         elif key == pygame.K_F3:
             self.debug = not self.debug
         elif key == pygame.K_t:      # DEBUG ONLY: spawn a Walker at the cursor
@@ -440,24 +440,48 @@ class PlayingState(GameState):
         self.hub.open(tab)
         self.active_overlay = "hub"
         pygame.mouse.set_visible(True)           # the hub can be clicked
+        self.game.event_bus.emit("UI_OPEN", {})           # the hub can be clicked
+
+    @staticmethod
+    def _hub_sound_event(message: str) -> str:
+        """The sound a hub message deserves: by what happened, or a refusal sound for anything else."""
+        if message.startswith("Mission accepted"):
+            return ""                                        # MISSION_STARTED already has its own sound
+        for prefix, event in (("Used ", "ITEM_USED"), ("Crafted", "ITEM_CRAFTED"), ("Equipped", "ITEM_EQUIPPED"),
+                              ("Attached", "ITEM_EQUIPPED"), ("Removed", "ITEM_EQUIPPED"),
+                              ("Tracking", "UI_CONFIRM")):
+            if message.startswith(prefix):
+                return event
+        if "upgraded to level" in message:
+            return "ITEM_CRAFTED"
+        if " - rank " in message:                            # a skill was bought
+            return "UI_CONFIRM"
+        return "UI_DENY"
 
     def _handle_overlay_event(self, event: pygame.event.Event) -> None:
         name = self.active_overlay
         if name == "hub":
+            tab_before = self.hub.tab
             message = self.hub.handle_event(event)
             self._apply_skill_effects()                      # gear, skills or attachments may have changed
             if message:
                 self.hud.notify(message, 2.0)
+                sound_event = self._hub_sound_event(message)
+                if sound_event:
+                    self.game.event_bus.emit(sound_event, {})
+            elif self.hub.tab != tab_before:
+                self.game.event_bus.emit("UI_TAB", {})
             if self.hub.close_requested:
                 self.hub.close_requested = False
                 self.active_overlay = None
                 pygame.mouse.set_visible(False)             # back to the in-game crosshair
+                self.game.event_bus.emit("UI_CLOSE", {})
             return
         if event.type != pygame.KEYDOWN:
             return
         if event.key in OVERLAY_CLOSE_KEYS[name]:
             self.active_overlay = None
-            return
+            return 
         message = None
         if name == "workshop":
             message = self.workshop_ui.handle_event(event)
@@ -472,11 +496,10 @@ class PlayingState(GameState):
 
     # ---- update ----
     def update(self, dt: float) -> None:
-        self.hud.update(dt)
+        self.game.audio.listener = (self.player.position.x, self.player.position.y)
         if self.active_overlay is not None:
-            self.fire_pressed = False
-            return                                # menus pause the game
-
+            return
+        ...
         self.full_notice_timer = max(0.0, self.full_notice_timer - dt)
         if self.boss is None:
             self.cycle.update(dt)                 # time stands still during a boss fight
@@ -516,7 +539,7 @@ class PlayingState(GameState):
         self.fire_pressed = False
         if trigger and not self.player.stats.is_dead:
             if weapon.loaded == 0:
-                weapon.start_reload()      # clicking on an empty gun reloads
+                self._start_reload()      # clicking on an empty gun reloads
                 return
             fired = self.combat.fire_weapon(
                 self.player.position, self.player.aim_direction, weapon, self.enemies,
@@ -770,6 +793,13 @@ class PlayingState(GameState):
         self.pickups.append(Pickup(item_id, quantity, position,
                                    settings.RARITY_COLORS[definition.rarity], definition.name))
 
+    def _start_reload(self) -> None:
+        weapon = self.player.weapon
+        if weapon.start_reload():
+            self.game.event_bus.emit("RELOAD_STARTED", {"weapon": weapon.definition.id})
+        elif weapon.loaded == 0 and not weapon.is_reloading:
+            self.game.event_bus.emit("WEAPON_EMPTY", {})            # a click: nothing to fire or load
+
     def _quick_heal(self) -> None:
         if self.player.stats.is_dead:
             return
@@ -778,6 +808,8 @@ class PlayingState(GameState):
             return
         name = self.player.quick_heal()
         self.hud.notify(f"Used {name}" if name else "No healing items", 1.5)
+        if name:
+            self.game.event_bus.emit("ITEM_USED", {"item": name})
 
     def _debug_spawn_walker(self) -> None:
         pos = self.camera.screen_to_world(pygame.mouse.get_pos())
